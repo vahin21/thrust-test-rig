@@ -3,25 +3,115 @@
 <head>
   <title>Static Thrust Test Rig</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: Arial; background: #111; color: white; text-align:center; }
+    input, button { padding:8px; margin:5px; }
+    button { cursor:pointer; }
+    #dashboardSection { display:none; }
+  </style>
 </head>
 <body>
 
-<h2>Static Thrust Test Rig</h2>
+<h2>Static Thrust Test Rig Dashboard</h2>
 
+<!-- LOGIN SECTION -->
 <div id="loginSection">
-  <input type="password" id="password" placeholder="Password">
-  <button onclick="login()">Login</button>
+  <input type="password" id="password" placeholder="Enter Password">
+  <button onclick="sendOTP()">Send OTP</button><br>
+
+  <input type="text" id="otp" placeholder="Enter OTP">
+  <button onclick="verifyOTP()">Verify</button>
 </div>
 
-<div id="dashboardSection" style="display:none;">
-  <canvas id="chart"></canvas>
-  <button onclick="fire()">FIRE</button>
+<!-- DASHBOARD -->
+<div id="dashboardSection">
+  <h3>Live Thrust vs Time</h3>
+  <canvas id="chart" width="600" height="300"></canvas><br>
+  <button onclick="fire()">FIRE MOTOR</button>
+  <button onclick="tare()">TARE</button>
 </div>
 
 <script>
-function login(){
-  document.getElementById("loginSection").style.display = "none";
-  document.getElementById("dashboardSection").style.display = "block";
+let chart;
+let time = 0;
+
+function initChart() {
+  const ctx = document.getElementById('chart').getContext('2d');
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [{
+        label: 'Thrust (g)',
+        data: [],
+        borderColor: 'lime',
+        tension: 0.2
+      }]
+    },
+    options: {
+      scales: {
+        x: { title: { display:true, text:"Time (s)" } },
+        y: { title: { display:true, text:"Thrust (g)" } }
+      }
+    }
+  });
+}
+
+async function fetchData(){
+  const res = await fetch('/api/data');
+  const data = await res.json();
+
+  chart.data.labels.push(time++);
+  chart.data.datasets[0].data.push(data.weight);
+
+  if(chart.data.labels.length > 50){
+    chart.data.labels.shift();
+    chart.data.datasets[0].data.shift();
+  }
+
+  chart.update();
+}
+
+setInterval(() => {
+  if(document.getElementById("dashboardSection").style.display === "block"){
+    fetchData();
+  }
+}, 1000);
+
+async function sendOTP(){
+  const password = document.getElementById("password").value;
+  await fetch('/api/login', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ password })
+  });
+  alert("OTP sent to WhatsApp");
+}
+
+async function verifyOTP(){
+  const otp = document.getElementById("otp").value;
+  const res = await fetch('/api/verify', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ otp })
+  });
+  const data = await res.json();
+
+  if(data.success){
+    document.getElementById("loginSection").style.display = "none";
+    document.getElementById("dashboardSection").style.display = "block";
+    initChart();
+  } else {
+    alert("Invalid OTP");
+  }
+}
+
+async function fire(){
+  await fetch('/api/fire', { method:'POST' });
+}
+
+async function tare(){
+  await fetch('/api/tare', { method:'POST' });
 }
 </script>
 
