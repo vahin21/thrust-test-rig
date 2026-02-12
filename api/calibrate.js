@@ -1,16 +1,17 @@
 import mqtt from "mqtt";
 
-const client = mqtt.connect("mqtt://broker.hivemq.com");
-
 export default function handler(req, res) {
-
-  const { weight } = req.body;
-
-  if (!weight) {
-    return res.status(400).json({ error: "Weight required" });
+  if (req.method !== "POST") {
+    return res.status(405).end();
   }
 
-  client.publish("thrustrig/calibrate", weight.toString());
+  const { factor } = req.body;
 
-  res.status(200).json({ status: "Calibration command sent" });
+  const client = mqtt.connect("mqtt://broker.hivemq.com");
+
+  client.on("connect", () => {
+    client.publish("thrust/calibrate", String(factor));
+    client.end();
+    res.status(200).json({ success: true });
+  });
 }
