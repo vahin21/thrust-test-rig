@@ -1,12 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Thrust Test Rig</title>
+  <title>Thrust Test Rig Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
-<h2>Thrust Test Rig Dashboard</h2>
+<h2>Static Thrust Test Rig</h2>
 
+<!-- LOGIN -->
 <h3>Login</h3>
 <input type="password" id="password" placeholder="Password">
 <button onclick="login()">Login</button>
@@ -18,9 +20,11 @@
 
 <hr>
 
+<!-- LIVE THRUST DISPLAY -->
 <h3>Live Thrust</h3>
 <p id="thrust">0</p>
 
+<!-- CALIBRATION -->
 <h3>Calibration</h3>
 <input type="number" id="knownWeight" placeholder="Known weight (g)">
 <button onclick="calibrate()">Calibrate</button>
@@ -30,11 +34,20 @@
 
 <hr>
 
+<!-- FIRE BUTTON -->
 <button id="fireBtn" disabled onclick="fire()">FIRE MOTOR</button>
+
+<hr>
+
+<!-- GRAPH -->
+<h3>Thrust vs Time</h3>
+<canvas id="thrustChart" width="800" height="400"></canvas>
 
 <script>
 
 let verified = false;
+
+// ---------------- LOGIN ----------------
 
 async function login() {
   await fetch("/api/login", {
@@ -57,6 +70,8 @@ async function verify() {
   }
 }
 
+// ---------------- CALIBRATION ----------------
+
 async function calibrate() {
   if (!verified) return alert("Not verified");
 
@@ -69,26 +84,253 @@ async function calibrate() {
 
 async function tare() {
   if (!verified) return alert("Not verified");
-
   await fetch("/api/tare");
 }
+
+// ---------------- FIRE ----------------
 
 async function fire() {
   if (!verified) return alert("Not verified");
   await fetch("/api/fire");
 }
 
+// ---------------- GRAPH SETUP ----------------
+
+const ctx = document.getElementById("thrustChart").getContext("2d");
+
+const thrustData = {
+  labels: [],
+  datasets: [{
+    label: "Thrust",
+    data: [],
+    borderWidth: 2,
+    tension: 0.3
+  }]
+};
+
+const thrustChart = new Chart(ctx, {
+  type: "line",
+  data: thrustData,
+  options: {
+    animation: false,
+    scales: {
+      x: {
+        title: {
+          display: true,
+          text: "Time"
+        }
+      },
+      y: {
+        title: {
+          display: true,
+          text: "Thrust"
+        }
+      }
+    }
+  }
+});
+
+// ---------------- DATA UPDATE LOOP ----------------
+
 setInterval(async () => {
 
   const res = await fetch("/api/data");
   const json = await res.json();
 
-  document.getElementById("thrust").innerText = json.thrust;
+  const thrustValue = json.thrust;
+
+  // Update numeric display
+  document.getElementById("thrust").innerText = thrustValue;
   document.getElementById("calValue").innerText = json.calibration;
 
-  if (verified && json.thrust !== undefined) {
+  // Enable fire only if verified and data exists
+  if (verified && thrustValue !== undefined) {
     document.getElementById("fireBtn").disabled = false;
   }
+
+  // Add data to graph
+  const currentTime = new Date().toLocaleTimeString();
+
+  thrustData.labels.push(currentTime);
+  thrustData.datasets[0].data.push(thrustValue);
+
+  // Keep last 50 points only
+  if (thrustData.labels.length > 50) {
+    thrustData.labels.shift();
+    thrustData.datasets[0].data.shift();
+  }
+
+  thrustChart.update();
+
+}, 1000);
+
+</script>
+
+</body>
+</html>
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Thrust Test Rig Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<h2>Static Thrust Test Rig</h2>
+
+<!-- LOGIN -->
+<h3>Login</h3>
+<input type="password" id="password" placeholder="Password">
+<button onclick="login()">Login</button>
+
+<br><br>
+
+<input type="number" id="otp" placeholder="Enter OTP">
+<button onclick="verify()">Verify</button>
+
+<hr>
+
+<!-- LIVE THRUST DISPLAY -->
+<h3>Live Thrust</h3>
+<p id="thrust">0</p>
+
+<!-- CALIBRATION -->
+<h3>Calibration</h3>
+<input type="number" id="knownWeight" placeholder="Known weight (g)">
+<button onclick="calibrate()">Calibrate</button>
+<button onclick="tare()">Tare</button>
+
+<p>Calibration Factor: <span id="calValue">-</span></p>
+
+<hr>
+
+<!-- FIRE BUTTON -->
+<button id="fireBtn" disabled onclick="fire()">FIRE MOTOR</button>
+
+<hr>
+
+<!-- GRAPH -->
+<h3>Thrust vs Time</h3>
+<canvas id="thrustChart" width="800" height="400"></canvas>
+
+<script>
+
+let verified = false;
+
+// ---------------- LOGIN ----------------
+
+async function login() {
+  await fetch("/api/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password: document.getElementById("password").value })
+  });
+}
+
+async function verify() {
+  const res = await fetch("/api/verify", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ otp: document.getElementById("otp").value })
+  });
+
+  if (res.ok) {
+    verified = true;
+    alert("Access Granted");
+  }
+}
+
+// ---------------- CALIBRATION ----------------
+
+async function calibrate() {
+  if (!verified) return alert("Not verified");
+
+  await fetch("/api/calibrate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ weight: document.getElementById("knownWeight").value })
+  });
+}
+
+async function tare() {
+  if (!verified) return alert("Not verified");
+  await fetch("/api/tare");
+}
+
+// ---------------- FIRE ----------------
+
+async function fire() {
+  if (!verified) return alert("Not verified");
+  await fetch("/api/fire");
+}
+
+// ---------------- GRAPH SETUP ----------------
+
+const ctx = document.getElementById("thrustChart").getContext("2d");
+
+const thrustData = {
+  labels: [],
+  datasets: [{
+    label: "Thrust",
+    data: [],
+    borderWidth: 2,
+    tension: 0.3
+  }]
+};
+
+const thrustChart = new Chart(ctx, {
+  type: "line",
+  data: thrustData,
+  options: {
+    animation: false,
+    scales: {
+      x: {
+        title: {
+          display: true,
+          text: "Time"
+        }
+      },
+      y: {
+        title: {
+          display: true,
+          text: "Thrust"
+        }
+      }
+    }
+  }
+});
+
+// ---------------- DATA UPDATE LOOP ----------------
+
+setInterval(async () => {
+
+  const res = await fetch("/api/data");
+  const json = await res.json();
+
+  const thrustValue = json.thrust;
+
+  // Update numeric display
+  document.getElementById("thrust").innerText = thrustValue;
+  document.getElementById("calValue").innerText = json.calibration;
+
+  // Enable fire only if verified and data exists
+  if (verified && thrustValue !== undefined) {
+    document.getElementById("fireBtn").disabled = false;
+  }
+
+  // Add data to graph
+  const currentTime = new Date().toLocaleTimeString();
+
+  thrustData.labels.push(currentTime);
+  thrustData.datasets[0].data.push(thrustValue);
+
+  // Keep last 50 points only
+  if (thrustData.labels.length > 50) {
+    thrustData.labels.shift();
+    thrustData.datasets[0].data.shift();
+  }
+
+  thrustChart.update();
 
 }, 1000);
 
