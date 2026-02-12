@@ -4,67 +4,89 @@
   <title>Static Thrust Test Rig</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body { font-family: Arial; background: #111; color: white; text-align:center; }
-    input, button { padding:8px; margin:5px; }
-    button { cursor:pointer; }
-    #dashboardSection { display:none; }
+    body {
+      font-family: Arial;
+      text-align: center;
+      background: #111;
+      color: white;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 5px;
+      font-size: 16px;
+    }
+    input {
+      padding: 8px;
+      font-size: 16px;
+      margin: 5px;
+    }
+    #fireBtn {
+      background: red;
+      color: white;
+    }
   </style>
 </head>
 <body>
 
-<h2>Static Thrust Test Rig Dashboard</h2>
+<h1>Static Thrust Test Rig Dashboard</h1>
 
-<!-- LOGIN SECTION -->
-<div id="loginSection">
-  <input type="password" id="password" placeholder="Enter Password">
-  <button onclick="sendOTP()">Send OTP</button><br>
+<h2 id="thrust">Thrust: 0 N</h2>
 
-  <input type="text" id="otp" placeholder="Enter OTP">
-  <button onclick="verifyOTP()">Verify</button>
-</div>
+<canvas id="chart" width="800" height="400"></canvas>
 
-<!-- DASHBOARD -->
-<div id="dashboardSection">
-  <h3>Live Thrust vs Time</h3>
-  <canvas id="chart" width="600" height="300"></canvas><br>
-  <button onclick="fire()">FIRE MOTOR</button>
-  <button onclick="tare()">TARE</button>
-</div>
+<br><br>
+
+<button id="fireBtn" onclick="fire()">FIRE</button>
+<button onclick="tare()">TARE</button>
+
+<br><br>
+
+<h3>Calibration</h3>
+<input type="number" id="calFactor" placeholder="Enter scale factor">
+<button onclick="calibrate()">Apply Calibration</button>
 
 <script>
-let chart;
-let time = 0;
+let ctx = document.getElementById('chart').getContext('2d');
 
-function initChart() {
-  const ctx = document.getElementById('chart').getContext('2d');
-  chart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: [],
-      datasets: [{
-        label: 'Thrust (g)',
-        data: [],
-        borderColor: 'lime',
-        tension: 0.2
-      }]
-    },
-    options: {
-      scales: {
-        x: { title: { display:true, text:"Time (s)" } },
-        y: { title: { display:true, text:"Thrust (g)" } }
-      }
+let chart = new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: [],
+    datasets: [{
+      label: 'Thrust (N)',
+      data: [],
+      borderColor: 'lime',
+      borderWidth: 2,
+      fill: false,
+      tension: 0.1
+    }]
+  },
+  options: {
+    animation: false,
+    scales: {
+      x: { title: { display: true, text: 'Time' } },
+      y: { title: { display: true, text: 'Thrust (N)' } }
     }
-  });
-}
+  }
+});
+
+let startTime = Date.now();
 
 async function fetchData(){
   const res = await fetch('/api/data');
   const data = await res.json();
 
-  chart.data.labels.push(time++);
-  chart.data.datasets[0].data.push(data.weight);
+  const thrust = parseFloat(data.thrust);
 
-  if(chart.data.labels.length > 50){
+  document.getElementById("thrust").innerText =
+    "Thrust: " + thrust.toFixed(2) + " N";
+
+  let time = ((Date.now() - startTime) / 1000).toFixed(1);
+
+  chart.data.labels.push(time);
+  chart.data.datasets[0].data.push(thrust);
+
+  if(chart.data.labels.length > 100){
     chart.data.labels.shift();
     chart.data.datasets[0].data.shift();
   }
@@ -72,39 +94,7 @@ async function fetchData(){
   chart.update();
 }
 
-setInterval(() => {
-  if(document.getElementById("dashboardSection").style.display === "block"){
-    fetchData();
-  }
-}, 1000);
-
-async function sendOTP(){
-  const password = document.getElementById("password").value;
-  await fetch('/api/login', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ password })
-  });
-  alert("OTP sent to WhatsApp");
-}
-
-async function verifyOTP(){
-  const otp = document.getElementById("otp").value;
-  const res = await fetch('/api/verify', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ otp })
-  });
-  const data = await res.json();
-
-  if(data.success){
-    document.getElementById("loginSection").style.display = "none";
-    document.getElementById("dashboardSection").style.display = "block";
-    initChart();
-  } else {
-    alert("Invalid OTP");
-  }
-}
+setInterval(fetchData, 500);
 
 async function fire(){
   await fetch('/api/fire', { method:'POST' });
@@ -112,6 +102,18 @@ async function fire(){
 
 async function tare(){
   await fetch('/api/tare', { method:'POST' });
+}
+
+async function calibrate(){
+  const factor = document.getElementById("calFactor").value;
+
+  await fetch('/api/calibrate', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ factor })
+  });
+
+  alert("Calibration factor sent to ESP");
 }
 </script>
 
