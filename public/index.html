@@ -1,120 +1,241 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Static Thrust Test Rig</title>
+  <title>Static Thrust Test Rig Dashboard</title>
+
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <style>
-    body {
+    body{
       font-family: Arial;
-      text-align: center;
-      background: #111;
-      color: white;
+      text-align:center;
+      background:#111;
+      color:white;
     }
-    button {
-      padding: 10px 20px;
-      margin: 5px;
-      font-size: 16px;
+
+    input, button{
+      padding:8px;
+      margin:5px;
+      font-size:16px;
     }
-    input {
-      padding: 8px;
-      font-size: 16px;
-      margin: 5px;
+
+    button{
+      cursor:pointer;
     }
-    #fireBtn {
-      background: red;
-      color: white;
+
+    #dashboardSection{
+      display:none;
+    }
+
+    #fireBtn{
+      background:red;
+      color:white;
+      font-weight:bold;
+    }
+
+    canvas{
+      background:white;
+      border-radius:6px;
     }
   </style>
 </head>
+
 <body>
 
-<h1>Static Thrust Test Rig Dashboard</h1>
+<h2>Static Thrust Test Rig</h2>
 
-<h2 id="thrust">Thrust: 0 N</h2>
+<!-- LOGIN -->
+<div id="loginSection">
 
+<h3>Login</h3>
+
+<input type="password" id="password" placeholder="Password">
+<button onclick="login()">Send OTP</button>
+
+<br>
+
+<input type="number" id="otp" placeholder="Enter OTP">
+<button onclick="verify()">Verify</button>
+
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboardSection">
+
+<h3>Live Thrust</h3>
+<p id="thrust">0</p>
+
+<h3>Thrust vs Time</h3>
 <canvas id="chart" width="800" height="400"></canvas>
 
-<br><br>
+<br>
 
-<button id="fireBtn" onclick="fire()">FIRE</button>
+<button id="fireBtn" onclick="fire()">FIRE MOTOR</button>
 <button onclick="tare()">TARE</button>
 
-<br><br>
+<hr>
 
 <h3>Calibration</h3>
-<input type="number" id="calFactor" placeholder="Enter scale factor">
-<button onclick="calibrate()">Apply Calibration</button>
+
+<p>Place a known weight on the load cell</p>
+
+<input type="number" id="knownWeight" placeholder="Enter known weight (g)">
+<button onclick="calibrate()">Calibrate</button>
+
+<p>Calibration Factor: <span id="calValue">-</span></p>
+
+</div>
+
 
 <script>
-let ctx = document.getElementById('chart').getContext('2d');
 
-let chart = new Chart(ctx, {
-  type: 'line',
-  data: {
-    labels: [],
-    datasets: [{
-      label: 'Thrust (N)',
-      data: [],
-      borderColor: 'lime',
-      borderWidth: 2,
-      fill: false,
-      tension: 0.1
+let verified = false;
+
+/* ---------- GRAPH SETUP ---------- */
+
+const ctx = document.getElementById("chart").getContext("2d");
+
+const chart = new Chart(ctx,{
+  type:"line",
+  data:{
+    labels:[],
+    datasets:[{
+      label:"Thrust",
+      data:[],
+      borderWidth:2,
+      tension:0.3
     }]
   },
-  options: {
-    animation: false,
-    scales: {
-      x: { title: { display: true, text: 'Time' } },
-      y: { title: { display: true, text: 'Thrust (N)' } }
+  options:{
+    animation:false,
+    scales:{
+      x:{
+        title:{
+          display:true,
+          text:"Time"
+        }
+      },
+      y:{
+        title:{
+          display:true,
+          text:"Thrust"
+        }
+      }
     }
   }
 });
 
-let startTime = Date.now();
+/* ---------- LOGIN ---------- */
 
-async function fetchData(){
-  const res = await fetch('/api/data');
-  const data = await res.json();
+async function login(){
 
-  const thrust = parseFloat(data.thrust);
+  await fetch("/api/login",{
+    method:"POST",
+    headers:{ "Content-Type":"application/json"},
+    body:JSON.stringify({
+      password:document.getElementById("password").value
+    })
+  });
 
-  document.getElementById("thrust").innerText =
-    "Thrust: " + thrust.toFixed(2) + " N";
+}
 
-  let time = ((Date.now() - startTime) / 1000).toFixed(1);
+/* ---------- VERIFY OTP ---------- */
+
+async function verify(){
+
+  const res = await fetch("/api/verify",{
+    method:"POST",
+    headers:{ "Content-Type":"application/json"},
+    body:JSON.stringify({
+      otp:document.getElementById("otp").value
+    })
+  });
+
+  if(res.ok){
+
+    verified=true;
+
+    document.getElementById("loginSection").style.display="none";
+    document.getElementById("dashboardSection").style.display="block";
+
+  }
+
+}
+
+/* ---------- CALIBRATION ---------- */
+
+async function calibrate(){
+
+  if(!verified){
+    alert("Login required");
+    return;
+  }
+
+  const weight = document.getElementById("knownWeight").value;
+
+  await fetch("/api/calibrate",{
+    method:"POST",
+    headers:{ "Content-Type":"application/json"},
+    body:JSON.stringify({ weight })
+  });
+
+}
+
+/* ---------- TARE ---------- */
+
+async function tare(){
+
+  if(!verified){
+    alert("Login required");
+    return;
+  }
+
+  await fetch("/api/tare");
+
+}
+
+/* ---------- FIRE ---------- */
+
+async function fire(){
+
+  if(!verified){
+    alert("Login required");
+    return;
+  }
+
+  await fetch("/api/fire");
+
+}
+
+/* ---------- DATA LOOP ---------- */
+
+setInterval(async()=>{
+
+  const res = await fetch("/api/data");
+  const json = await res.json();
+
+  document.getElementById("thrust").innerText = json.thrust;
+
+  document.getElementById("calValue").innerText = json.calibration;
+
+  if(verified && json.thrust !== undefined){
+    document.getElementById("fireBtn").disabled=false;
+  }
+
+  const time = new Date().toLocaleTimeString();
 
   chart.data.labels.push(time);
-  chart.data.datasets[0].data.push(thrust);
+  chart.data.datasets[0].data.push(json.thrust);
 
-  if(chart.data.labels.length > 100){
+  if(chart.data.labels.length>50){
     chart.data.labels.shift();
     chart.data.datasets[0].data.shift();
   }
 
   chart.update();
-}
 
-setInterval(fetchData, 500);
+},1000);
 
-async function fire(){
-  await fetch('/api/fire', { method:'POST' });
-}
-
-async function tare(){
-  await fetch('/api/tare', { method:'POST' });
-}
-
-async function calibrate(){
-  const factor = document.getElementById("calFactor").value;
-
-  await fetch('/api/calibrate', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ factor })
-  });
-
-  alert("Calibration factor sent to ESP");
-}
 </script>
 
 </body>
