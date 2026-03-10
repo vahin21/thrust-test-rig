@@ -522,9 +522,11 @@ function downloadCSV() {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `cygnus_motor_test_${ts}.csv`;
+  document.body.appendChild(a);
   a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
 }
-
 /* ─── LAUNCH ARMING ─── */
 function updateArming() {
   const sw1 = document.getElementById('sw1').checked;
