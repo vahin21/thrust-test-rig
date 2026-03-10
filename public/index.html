@@ -1,242 +1,544 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Static Thrust Test Rig Dashboard</title>
-
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Cygnus Test Rig</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
   <style>
-    body{
-      font-family: Arial;
-      text-align:center;
-      background:#111;
-      color:white;
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0c12; --panel: #12151f; --border: #1e2436;
+      --accent: #e84040; --accent2: #f07020; --green: #22c55e;
+      --blue: #3b82f6; --text: #e2e8f0; --muted: #64748b;
     }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
+    header { width: 100%; background: var(--panel); border-bottom: 1px solid var(--border); padding: 14px 32px; display: flex; align-items: center; justify-content: space-between; }
+    .logo { font-size: 1.2rem; font-weight: 700; letter-spacing: 2px; color: var(--accent); }
+    .logo span { color: var(--text); }
+    .status-dot { width: 10px; height: 10px; border-radius: 50%; background: #444; display: inline-block; margin-right: 6px; transition: background 0.3s; }
+    .status-dot.live { background: var(--green); box-shadow: 0 0 8px var(--green); }
+    #headerRight { display: flex; align-items: center; gap: 16px; font-size: 0.85rem; color: var(--muted); }
 
-    input, button{
-      padding:8px;
-      margin:5px;
-      font-size:16px;
-    }
+    /* LOGIN */
+    #loginSection { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; gap: 20px; padding: 40px; }
+    .login-card { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 48px 56px; width: 360px; display: flex; flex-direction: column; align-items: center; gap: 20px; }
+    .login-card h2 { font-size: 1.4rem; letter-spacing: 1px; }
+    .login-card p { color: var(--muted); font-size: 0.85rem; text-align: center; }
+    .login-card input { width: 100%; padding: 12px 16px; background: #0a0c12; border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 1rem; outline: none; transition: border-color 0.2s; }
+    .login-card input:focus { border-color: var(--accent); }
+    .btn-primary { width: 100%; padding: 12px; background: var(--accent); color: white; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: opacity 0.2s, transform 0.1s; }
+    .btn-primary:hover { opacity: 0.88; }
+    .btn-primary:active { transform: scale(0.97); }
+    #loginError { color: var(--accent); font-size: 0.85rem; display: none; }
 
-    button{
-      cursor:pointer;
-    }
+    /* MODE SELECT */
+    #modeSection { display: none; flex-direction: column; align-items: center; justify-content: center; flex: 1; gap: 32px; padding: 40px; }
+    #modeSection h2 { font-size: 1.3rem; color: var(--muted); letter-spacing: 1px; }
+    .mode-grid { display: flex; gap: 24px; }
+    .mode-card { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 48px 56px; text-align: center; cursor: pointer; transition: border-color 0.2s, transform 0.15s; width: 260px; }
+    .mode-card:hover { border-color: var(--accent); transform: translateY(-4px); }
+    .mode-card .icon { font-size: 3rem; margin-bottom: 16px; }
+    .mode-card h3 { font-size: 1.2rem; margin-bottom: 8px; }
+    .mode-card p { font-size: 0.82rem; color: var(--muted); }
 
-    #dashboardSection{
-      display:none;
-    }
+    /* DASH WRAPPER */
+    #dashSection { display: none; flex-direction: column; width: 100%; max-width: 1200px; padding: 24px 32px; gap: 20px; }
+    .dash-top { display: flex; align-items: center; gap: 12px; }
+    .back-btn { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 8px; padding: 8px 14px; cursor: pointer; font-size: 0.85rem; }
+    .back-btn:hover { border-color: var(--accent); color: var(--text); }
+    .dash-top h1 { font-size: 1.3rem; letter-spacing: 1px; }
+    .tag { font-size: 0.75rem; padding: 4px 10px; border-radius: 20px; font-weight: 600; letter-spacing: 0.5px; }
+    .tag-motor { background: rgba(232,64,64,0.15); color: var(--accent); }
+    .tag-launch { background: rgba(240,112,32,0.15); color: var(--accent2); }
 
-    #fireBtn{
-      background:red;
-      color:white;
-      font-weight:bold;
-    }
+    /* MOTOR */
+    #motorSection { display: none; flex-direction: column; gap: 20px; width: 100%; }
+    .metrics-row { display: flex; gap: 16px; }
+    .metric-card { flex: 1; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; }
+    .metric-card .label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+    .metric-card .value { font-size: 2rem; font-weight: 700; }
+    .metric-card .unit { font-size: 0.85rem; color: var(--muted); margin-left: 4px; }
+    .chart-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
+    .chart-panel h3 { font-size: 0.85rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
+    .controls-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    .btn { padding: 10px 22px; border-radius: 8px; border: none; font-size: 0.92rem; font-weight: 600; cursor: pointer; transition: opacity 0.2s, transform 0.1s; }
+    .btn:active { transform: scale(0.96); }
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .btn-fire { background: var(--accent); color: white; font-size: 1rem; padding: 12px 36px; letter-spacing: 1px; }
+    .btn-fire:hover:not(:disabled) { opacity: 0.85; }
+    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    .btn-outline:hover { border-color: var(--accent); }
+    .btn-green { background: var(--green); color: #000; }
+    .btn-green:hover { opacity: 0.85; }
+    .results-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 24px; display: none; }
+    .results-panel h3 { font-size: 0.85rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
+    .results-grid { display: flex; gap: 24px; flex-wrap: wrap; }
+    .result-item { display: flex; flex-direction: column; gap: 4px; }
+    .result-item .rl { font-size: 0.75rem; color: var(--muted); }
+    .result-item .rv { font-size: 1.5rem; font-weight: 700; color: var(--green); }
 
-    canvas{
-      background:white;
-      border-radius:6px;
-    }
+    /* LAUNCH */
+    #launchSection { display: none; flex-direction: column; gap: 24px; width: 100%; max-width: 700px; margin: 0 auto; }
+    .safety-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 28px 32px; }
+    .safety-panel h3 { font-size: 0.82rem; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 20px; }
+    .switch-list { display: flex; flex-direction: column; gap: 16px; }
+    .switch-item { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border: 1px solid var(--border); border-radius: 10px; transition: border-color 0.2s; }
+    .switch-item.armed { border-color: var(--green); background: rgba(34,197,94,0.05); }
+    .switch-left { display: flex; flex-direction: column; gap: 4px; }
+    .switch-name { font-weight: 600; font-size: 0.95rem; }
+    .switch-desc { font-size: 0.78rem; color: var(--muted); }
+    .toggle-wrap { position: relative; width: 52px; height: 28px; cursor: pointer; }
+    .toggle-wrap input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; inset: 0; background: #1e2436; border-radius: 28px; transition: background 0.3s; }
+    .slider::before { content: ''; position: absolute; width: 20px; height: 20px; left: 4px; bottom: 4px; background: #64748b; border-radius: 50%; transition: transform 0.3s, background 0.3s; }
+    .toggle-wrap input:checked + .slider { background: rgba(34,197,94,0.25); }
+    .toggle-wrap input:checked + .slider::before { transform: translateX(24px); background: var(--green); }
+    .arm-status { text-align: center; padding: 16px; border-radius: 10px; font-size: 0.9rem; font-weight: 600; letter-spacing: 1px; border: 1px solid var(--border); background: rgba(100,116,139,0.1); color: var(--muted); transition: all 0.3s; }
+    .arm-status.armed { background: rgba(34,197,94,0.1); border-color: var(--green); color: var(--green); }
+    .launch-btn-wrap { display: flex; justify-content: center; align-items: center; padding: 32px; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; }
+    #launchBtn { width: 200px; height: 200px; border-radius: 50%; font-size: 1.3rem; font-weight: 800; letter-spacing: 2px; background: #1e2436; border: 3px solid var(--border); color: var(--muted); cursor: not-allowed; transition: all 0.3s; }
+    #launchBtn.armed { background: var(--accent); border-color: var(--accent); color: white; cursor: pointer; box-shadow: 0 0 40px rgba(232,64,64,0.4); animation: pulse-launch 2s infinite; }
+    #launchBtn.armed:hover { box-shadow: 0 0 60px rgba(232,64,64,0.6); }
+    #launchBtn.armed:active { transform: scale(0.95); }
+    @keyframes pulse-launch { 0%,100%{box-shadow:0 0 40px rgba(232,64,64,0.4)} 50%{box-shadow:0 0 60px rgba(232,64,64,0.65)} }
+    .launch-log { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; font-size: 0.82rem; color: var(--muted); font-family: 'Courier New', monospace; max-height: 160px; overflow-y: auto; }
+    .log-entry { padding: 3px 0; border-bottom: 1px solid var(--border); }
+    .log-entry.ok { color: var(--green); }
+    .log-entry.warn { color: var(--accent2); }
+    .log-entry.err { color: var(--accent); }
+    canvas { width: 100% !important; }
   </style>
 </head>
-
 <body>
 
-<h2>Static Thrust Test Rig</h2>
+<header>
+  <div class="logo">CYGNUS <span>TEST RIG</span></div>
+  <div id="headerRight">
+    <span id="connStatus"><span class="status-dot" id="connDot"></span>Offline</span>
+    <span id="headerMode" style="display:none"></span>
+    <button class="btn btn-outline" onclick="logout()" id="logoutBtn" style="display:none;padding:6px 14px;font-size:0.8rem;">⎋ Logout</button>
+  </div>
+</header>
 
 <!-- LOGIN -->
 <div id="loginSection">
-
-<h3>Login</h3>
-
-<input type="password" id="password" placeholder="Password">
-<button onclick="login()">Send OTP</button>
-
-<br>
-
-<input type="number" id="otp" placeholder="Enter OTP">
-<button onclick="verify()">Verify</button>
-
+  <div class="login-card">
+    <div style="font-size:2.5rem">🛸</div>
+    <h2>CYGNUS RIG</h2>
+    <p>Enter your access credentials to continue</p>
+    <input type="password" id="passwordInput" placeholder="Access password" onkeydown="if(event.key==='Enter')doLogin()" />
+    <div id="loginError">⚠ Incorrect password</div>
+    <button class="btn-primary" onclick="doLogin()">AUTHENTICATE</button>
+  </div>
 </div>
 
-<!-- DASHBOARD -->
-<div id="dashboardSection">
+<!-- MODE SELECT -->
+<div id="modeSection">
+  <h2>SELECT OPERATION MODE</h2>
+  <div class="mode-grid">
+    <div class="mode-card" onclick="enterMode('motor')">
+      <div class="icon">🔥</div>
+      <h3>Motor Test</h3>
+      <p>Fire motor, record live thrust curve, download CSV, view max thrust and total impulse</p>
+    </div>
+    <div class="mode-card" onclick="enterMode('launch')">
+      <div class="icon">🚀</div>
+      <h3>Launch</h3>
+      <p>Safety arming sequence and ESP32 relay-controlled ignition for launch operations</p>
+    </div>
+  </div>
+</div>
 
-<h3>Live Thrust</h3>
-<p id="thrust">0</p>
+<!-- DASHBOARD WRAPPER -->
+<div id="dashSection">
+  <div class="dash-top">
+    <button class="back-btn" onclick="goBack()">← Back</button>
+    <h1 id="dashTitle">Motor Test</h1>
+    <span class="tag" id="dashTag">MOTOR TEST</span>
+  </div>
 
-<h3>Thrust vs Time</h3>
-<canvas id="chart" width="800" height="400"></canvas>
+  <!-- MOTOR TEST -->
+  <div id="motorSection">
+    <div class="metrics-row">
+      <div class="metric-card">
+        <div class="label">Live Thrust</div>
+        <div class="value" id="liveThrust">—<span class="unit">N</span></div>
+      </div>
+      <div class="metric-card">
+        <div class="label">Max Thrust</div>
+        <div class="value" id="maxThrust">—<span class="unit">N</span></div>
+      </div>
+      <div class="metric-card">
+        <div class="label">Burn Time</div>
+        <div class="value" id="burnTime">—<span class="unit">s</span></div>
+      </div>
+      <div class="metric-card">
+        <div class="label">Total Impulse</div>
+        <div class="value" id="totalImpulse">—<span class="unit">Ns</span></div>
+      </div>
+    </div>
 
-<br>
+    <div class="chart-panel">
+      <h3>Thrust vs Time</h3>
+      <canvas id="thrustChart" height="300"></canvas>
+    </div>
 
-<button id="fireBtn" onclick="fire()">FIRE MOTOR</button>
-<button onclick="tare()">TARE</button>
+    <div class="controls-row">
+      <button class="btn btn-fire" id="fireBtn" onclick="fireMotor()" disabled>⚡ FIRE MOTOR</button>
+      <button class="btn btn-outline" onclick="tareScale()">↻ Tare</button>
+      <button class="btn btn-outline" onclick="clearGraph()">⬛ Clear Graph</button>
+      <button class="btn btn-green" id="csvBtn" onclick="downloadCSV()" style="display:none">⬇ Download CSV</button>
+    </div>
 
-<hr>
+    <div class="results-panel" id="resultsPanel">
+      <h3>Test Results</h3>
+      <div class="results-grid">
+        <div class="result-item"><span class="rl">Max Thrust</span><span class="rv" id="res_maxT">—</span></div>
+        <div class="result-item"><span class="rl">Avg Thrust</span><span class="rv" id="res_avgT">—</span></div>
+        <div class="result-item"><span class="rl">Burn Time</span><span class="rv" id="res_burn">—</span></div>
+        <div class="result-item"><span class="rl">Total Impulse</span><span class="rv" id="res_imp">—</span></div>
+        <div class="result-item"><span class="rl">Motor Class</span><span class="rv" id="res_class">—</span></div>
+      </div>
+    </div>
+  </div>
 
-<h3>Calibration</h3>
+  <!-- LAUNCH -->
+  <div id="launchSection">
+    <div class="safety-panel">
+      <h3>🔒 Safety Arming Sequence</h3>
+      <div class="switch-list">
+        <div class="switch-item" id="sw_item_1">
+          <div class="switch-left">
+            <span class="switch-name">Master Arm</span>
+            <span class="switch-desc">Primary system enable — must be armed first</span>
+          </div>
+          <label class="toggle-wrap">
+            <input type="checkbox" id="sw1" onchange="updateArming()"/>
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="switch-item" id="sw_item_2">
+          <div class="switch-left">
+            <span class="switch-name">Igniter Continuity</span>
+            <span class="switch-desc">Verify igniter circuit is intact before arming</span>
+          </div>
+          <label class="toggle-wrap">
+            <input type="checkbox" id="sw2" onchange="updateArming()"/>
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="switch-item" id="sw_item_3">
+          <div class="switch-left">
+            <span class="switch-name">Range Clear</span>
+            <span class="switch-desc">Confirm launch area is clear of all personnel</span>
+          </div>
+          <label class="toggle-wrap">
+            <input type="checkbox" id="sw3" onchange="updateArming()"/>
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+    </div>
 
-<p>Place a known weight on the load cell</p>
+    <div class="arm-status" id="armStatus">🔒 SYSTEM NOT ARMED — Enable all safety switches</div>
 
-<input type="number" id="knownWeight" placeholder="Enter known weight (g)">
-<button onclick="calibrate()">Calibrate</button>
+    <div class="launch-btn-wrap">
+      <button id="launchBtn" onclick="doLaunch()" disabled>LAUNCH</button>
+    </div>
 
-<p>Calibration Factor: <span id="calValue">-</span></p>
-
+    <div class="launch-log" id="launchLog">
+      <div class="log-entry">[SYSTEM] Launch console ready. Awaiting arm sequence…</div>
+    </div>
+  </div>
 </div>
 
 
 <script>
+let authenticated = false;
+let currentMode = null;
+let recording = false;
+let motorStartTime = null;
+let thrustData = [];
+let dataInterval = null;
+let maxThrust = 0;
 
-let verified = false;
+/* ─── AUTH ─── */
+function doLogin() {
+  const pw = document.getElementById('passwordInput').value;
+  if (pw === 'Cygnus02') {
+    authenticated = true;
+    document.getElementById('loginSection').style.display = 'none';
+    document.getElementById('modeSection').style.display = 'flex';
+    document.getElementById('logoutBtn').style.display = '';
+    startDataLoop();
+  } else {
+    document.getElementById('loginError').style.display = '';
+    document.getElementById('passwordInput').value = '';
+    setTimeout(() => document.getElementById('loginError').style.display = 'none', 3000);
+  }
+}
 
-/* ---------- GRAPH SETUP ---------- */
+function logout() {
+  authenticated = false;
+  currentMode = null;
+  if (dataInterval) clearInterval(dataInterval);
+  document.getElementById('loginSection').style.display = 'flex';
+  document.getElementById('modeSection').style.display = 'none';
+  document.getElementById('dashSection').style.display = 'none';
+  document.getElementById('logoutBtn').style.display = 'none';
+  document.getElementById('headerMode').style.display = 'none';
+  document.getElementById('passwordInput').value = '';
+}
 
-const ctx = document.getElementById("chart").getContext("2d");
+/* ─── MODE ROUTING ─── */
+function enterMode(mode) {
+  currentMode = mode;
+  document.getElementById('modeSection').style.display = 'none';
+  document.getElementById('dashSection').style.display = 'flex';
+  const hm = document.getElementById('headerMode');
+  hm.style.display = '';
+  if (mode === 'motor') {
+    document.getElementById('dashTitle').textContent = 'Motor Test';
+    document.getElementById('dashTag').textContent = 'MOTOR TEST';
+    document.getElementById('dashTag').className = 'tag tag-motor';
+    hm.textContent = '🔥 Motor Test';
+    document.getElementById('motorSection').style.display = 'flex';
+    document.getElementById('launchSection').style.display = 'none';
+  } else {
+    document.getElementById('dashTitle').textContent = 'Launch Control';
+    document.getElementById('dashTag').textContent = 'LAUNCH';
+    document.getElementById('dashTag').className = 'tag tag-launch';
+    hm.textContent = '🚀 Launch';
+    document.getElementById('motorSection').style.display = 'none';
+    document.getElementById('launchSection').style.display = 'flex';
+  }
+}
 
-const chart = new Chart(ctx,{
-  type:"line",
-  data:{
-    labels:[],
-    datasets:[{
-      label:"Thrust",
-      data:[],
-      borderWidth:2,
-      tension:0.3
+function goBack() {
+  currentMode = null;
+  document.getElementById('dashSection').style.display = 'none';
+  document.getElementById('modeSection').style.display = 'flex';
+  document.getElementById('motorSection').style.display = 'none';
+  document.getElementById('launchSection').style.display = 'none';
+  document.getElementById('headerMode').style.display = 'none';
+}
+
+/* ─── CHART ─── */
+const ctx = document.getElementById('thrustChart').getContext('2d');
+const chart = new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: [],
+    datasets: [{
+      label: 'Thrust (N)',
+      data: [],
+      borderColor: '#e84040',
+      backgroundColor: 'rgba(232,64,64,0.08)',
+      borderWidth: 2,
+      tension: 0.3,
+      pointRadius: 0,
+      fill: true
     }]
   },
-  options:{
-    animation:false,
-    scales:{
-      x:{
-        title:{
-          display:true,
-          text:"Time"
-        }
-      },
-      y:{
-        title:{
-          display:true,
-          text:"Thrust"
-        }
-      }
+  options: {
+    animation: false,
+    responsive: true,
+    plugins: { legend: { labels: { color: '#e2e8f0' } } },
+    scales: {
+      x: { title: { display: true, text: 'Time (s)', color: '#64748b' }, ticks: { color: '#64748b', maxTicksLimit: 10 }, grid: { color: '#1e2436' } },
+      y: { title: { display: true, text: 'Thrust (N)', color: '#64748b' }, ticks: { color: '#64748b' }, grid: { color: '#1e2436' }, min: 0 }
     }
   }
 });
 
-/* ---------- LOGIN ---------- */
-
-async function login(){
-
-  await fetch("/api/login",{
-    method:"POST",
-    headers:{ "Content-Type":"application/json"},
-    body:JSON.stringify({
-      password:document.getElementById("password").value
-    })
-  });
-
-}
-
-/* ---------- VERIFY OTP ---------- */
-
-async function verify(){
-
-  const res = await fetch("/api/verify",{
-    method:"POST",
-    headers:{ "Content-Type":"application/json"},
-    body:JSON.stringify({
-      otp:document.getElementById("otp").value
-    })
-  });
-
-  if(res.ok){
-
-    verified=true;
-
-    document.getElementById("loginSection").style.display="none";
-    document.getElementById("dashboardSection").style.display="block";
-
-  }
-
-}
-
-/* ---------- CALIBRATION ---------- */
-
-async function calibrate(){
-
-  if(!verified){
-    alert("Login required");
-    return;
-  }
-
-  const weight = document.getElementById("knownWeight").value;
-
-  await fetch("/api/calibrate",{
-    method:"POST",
-    headers:{ "Content-Type":"application/json"},
-    body:JSON.stringify({ weight })
-  });
-
-}
-
-/* ---------- TARE ---------- */
-
-async function tare(){
-
-  if(!verified){
-    alert("Login required");
-    return;
-  }
-
-  await fetch("/api/tare");
-
-}
-
-/* ---------- FIRE ---------- */
-
-async function fire(){
-
-  if(!verified){
-    alert("Login required");
-    return;
-  }
-
-  await fetch("/api/fire");
-
-}
-
-/* ---------- DATA LOOP ---------- */
-
-setInterval(async()=>{
-
-  const res = await fetch("/api/data");
-  const json = await res.json();
-
-  document.getElementById("thrust").innerText = json.thrust;
-
-  document.getElementById("calValue").innerText = json.calibration;
-
-  if(verified && json.thrust !== undefined){
-    document.getElementById("fireBtn").disabled=false;
-  }
-
-  const time = new Date().toLocaleTimeString();
-
-  chart.data.labels.push(time);
-  chart.data.datasets[0].data.push(json.thrust);
-
-  if(chart.data.labels.length>50){
-    chart.data.labels.shift();
-    chart.data.datasets[0].data.shift();
-  }
-
+function clearGraph() {
+  chart.data.labels = [];
+  chart.data.datasets[0].data = [];
   chart.update();
+  thrustData = []; motorStartTime = null; recording = false; maxThrust = 0;
+  document.getElementById('csvBtn').style.display = 'none';
+  document.getElementById('resultsPanel').style.display = 'none';
+  ['maxThrust','burnTime','totalImpulse'].forEach(id => {
+    const units = { maxThrust:'N', burnTime:'s', totalImpulse:'Ns' };
+    document.getElementById(id).innerHTML = `—<span class="unit">${units[id]}</span>`;
+  });
+}
 
-},1000);
+/* ─── DATA POLLING ─── */
+function startDataLoop() {
+  if (dataInterval) clearInterval(dataInterval);
+  dataInterval = setInterval(pollData, 500);
+}
 
+async function pollData() {
+  try {
+    const res = await fetch('/api/data');
+    const json = await res.json();
+    const thrust = parseFloat(json.thrust) || 0;
+    const fresh = json.lastUpdate && (Date.now() - json.lastUpdate) < 3000;
+
+    document.getElementById('connDot').className = 'status-dot' + (fresh ? ' live' : '');
+    document.getElementById('connStatus').innerHTML = `<span class="status-dot${fresh?' live':''}"></span>${fresh?'Connected':'Offline'}`;
+    document.getElementById('fireBtn').disabled = !fresh;
+    document.getElementById('liveThrust').innerHTML = thrust.toFixed(2) + '<span class="unit">N</span>';
+
+    if (recording) {
+      const t = ((Date.now() - motorStartTime) / 1000).toFixed(2);
+      thrustData.push({ t: parseFloat(t), v: thrust });
+      if (thrust > maxThrust) {
+        maxThrust = thrust;
+        document.getElementById('maxThrust').innerHTML = maxThrust.toFixed(2) + '<span class="unit">N</span>';
+      }
+      chart.data.labels.push(t);
+      chart.data.datasets[0].data.push(thrust);
+      chart.update();
+      const bt = (Date.now() - motorStartTime) / 1000;
+      document.getElementById('burnTime').innerHTML = bt.toFixed(1) + '<span class="unit">s</span>';
+      const impulse = calcImpulse();
+      document.getElementById('totalImpulse').innerHTML = impulse.toFixed(2) + '<span class="unit">Ns</span>';
+      if (bt > 1 && thrust < 0.5) stopRecording();
+    }
+  } catch (e) {
+    document.getElementById('connDot').className = 'status-dot';
+    document.getElementById('connStatus').innerHTML = '<span class="status-dot"></span>Offline';
+  }
+}
+
+function calcImpulse() {
+  if (thrustData.length < 2) return 0;
+  let I = 0;
+  for (let i = 1; i < thrustData.length; i++) {
+    const dt = thrustData[i].t - thrustData[i-1].t;
+    I += 0.5 * (thrustData[i].v + thrustData[i-1].v) * dt;
+  }
+  return I;
+}
+
+function getMotorClass(impulse) {
+  const classes = [[0.3125,'A'],[0.625,'B'],[1.25,'C'],[2.5,'D'],[5,'E'],[10,'F'],[20,'G'],[40,'H'],[80,'I'],[160,'J'],[320,'K'],[640,'L'],[1280,'M']];
+  for (const [max, name] of classes) if (impulse <= max) return name;
+  return 'N+';
+}
+
+function stopRecording() {
+  recording = false;
+  const impulse = calcImpulse();
+  const bt = thrustData.length > 0 ? thrustData[thrustData.length-1].t : 0;
+  const avg = thrustData.length > 0 ? (thrustData.reduce((s,d)=>s+d.v,0)/thrustData.length).toFixed(2) : '—';
+  document.getElementById('res_maxT').textContent = maxThrust.toFixed(2) + ' N';
+  document.getElementById('res_avgT').textContent = avg + ' N';
+  document.getElementById('res_burn').textContent = bt.toFixed(2) + ' s';
+  document.getElementById('res_imp').textContent = impulse.toFixed(2) + ' Ns';
+  document.getElementById('res_class').textContent = getMotorClass(impulse);
+  document.getElementById('resultsPanel').style.display = '';
+  document.getElementById('csvBtn').style.display = '';
+  addLog('ok', `[TEST] Burn complete. Max: ${maxThrust.toFixed(1)}N, Impulse: ${impulse.toFixed(2)}Ns, Class: ${getMotorClass(impulse)}`);
+}
+
+/* ─── MOTOR FIRE ─── */
+async function fireMotor() {
+  if (!authenticated) return;
+  if (!confirm('⚠ CONFIRM MOTOR FIRE\n\nThis will trigger the igniter relay on the ESP32.\nEnsure area is clear before proceeding.')) return;
+  try {
+    const res = await fetch('/api/fire', { method: 'POST' });
+    const json = await res.json();
+    if (res.ok) {
+      recording = true; motorStartTime = Date.now(); maxThrust = 0; thrustData = [];
+      chart.data.labels = []; chart.data.datasets[0].data = []; chart.update();
+      document.getElementById('resultsPanel').style.display = 'none';
+      document.getElementById('csvBtn').style.display = 'none';
+      addLog('ok', '[MOTOR] Ignition command sent. Recording thrust curve…');
+    } else {
+      alert('⚠ Fire blocked: ' + (json.error || 'Unknown error'));
+      addLog('err', '[MOTOR] Fire blocked: ' + (json.error || 'Unknown'));
+    }
+  } catch (e) {
+    alert('⚠ Network error. Could not send fire command.');
+  }
+}
+
+/* ─── TARE ─── */
+async function tareScale() {
+  try { await fetch('/api/tare'); addLog('ok', '[SCALE] Tare command sent to ESP32.'); }
+  catch (e) { addLog('err', '[SCALE] Tare failed.'); }
+}
+
+/* ─── CSV ─── */
+function downloadCSV() {
+  if (!thrustData.length) return;
+  let csv = 'Time_s,Thrust_N\r\n';
+  thrustData.forEach(r => { csv += `${r.t},${r.v}\r\n`; });
+  const ts = new Date().toISOString().replace(/[:.]/g,'_');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `cygnus_motor_test_${ts}.csv`;
+  a.click();
+}
+
+/* ─── LAUNCH ARMING ─── */
+function updateArming() {
+  const sw1 = document.getElementById('sw1').checked;
+  const sw2 = document.getElementById('sw2').checked;
+  const sw3 = document.getElementById('sw3').checked;
+  ['sw_item_1','sw_item_2','sw_item_3'].forEach((id, i) => {
+    document.getElementById(id).classList.toggle('armed', [sw1,sw2,sw3][i]);
+  });
+  const allArmed = sw1 && sw2 && sw3;
+  const status = document.getElementById('armStatus');
+  const btn = document.getElementById('launchBtn');
+  if (allArmed) {
+    status.textContent = '✅ ALL SYSTEMS ARMED — LAUNCH ENABLED';
+    status.className = 'arm-status armed';
+    btn.disabled = false;
+    btn.className = 'armed';
+    addLog('warn', '[SAFETY] ⚠ All switches ARMED. Launch is live.');
+  } else {
+    const remaining = 3 - [sw1,sw2,sw3].filter(Boolean).length;
+    status.textContent = `🔒 SYSTEM NOT ARMED — ${remaining} switch${remaining!==1?'es':''} remaining`;
+    status.className = 'arm-status';
+    btn.disabled = true;
+    btn.className = '';
+  }
+}
+
+/* ─── LAUNCH ─── */
+async function doLaunch() {
+  if (!document.getElementById('sw1').checked || !document.getElementById('sw2').checked || !document.getElementById('sw3').checked) return;
+  if (!confirm('🚀 LAUNCH CONFIRMATION\n\nAll safety switches armed.\nThis sends the LAUNCH command to the ESP32 relay.\n\nProceed?')) {
+    addLog('warn', '[LAUNCH] Launch aborted by operator.');
+    return;
+  }
+  addLog('warn', '[LAUNCH] 🚀 Launch command transmitted!');
+  try {
+    const res = await fetch('/api/launch', { method: 'POST' });
+    const json = await res.json();
+    if (res.ok) {
+      addLog('ok', '[LAUNCH] ✅ ESP32 relay triggered. Ignition initiated.');
+      setTimeout(() => {
+        ['sw1','sw2','sw3'].forEach(id => { document.getElementById(id).checked = false; });
+        updateArming();
+        addLog('ok', '[SAFETY] Switches auto-disarmed post-launch.');
+      }, 3000);
+    } else {
+      addLog('err', '[LAUNCH] ⚠ Rejected: ' + (json.error || 'Unknown'));
+    }
+  } catch (e) {
+    addLog('err', '[LAUNCH] Network error: ' + e.message);
+  }
+}
+
+/* ─── LOG ─── */
+function addLog(type, msg) {
+  const log = document.getElementById('launchLog');
+  const ts = new Date().toLocaleTimeString();
+  const div = document.createElement('div');
+  div.className = `log-entry ${type}`;
+  div.textContent = `[${ts}] ${msg}`;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
 </script>
-
 </body>
 </html>
