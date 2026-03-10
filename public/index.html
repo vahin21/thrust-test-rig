@@ -113,7 +113,17 @@
 <body>
 
 <header>
-  <div class="logo">CYGNUS <span>TEST RIG</span></div>
+  <div class="chart-panel" id="calibPanel" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <span style="font-size:0.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Calibration Weight</span>
+        <span style="font-size:0.75rem;color:var(--muted);">Place known weight on load cell, enter value, then calibrate before firing</span>
+      </div>
+      <input type="number" id="knownWeight" placeholder="Enter weight (g)" min="0" style="padding:10px 14px;background:#0a0c12;border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.95rem;outline:none;width:200px;" oninput="checkCalibReady()" />
+      <button class="btn btn-outline" id="calibBtn" onclick="doCalibrate()" disabled>⚖ Calibrate</button>
+      <div id="calibStatus" style="font-size:0.82rem;color:var(--muted);padding:8px 14px;border-radius:8px;border:1px solid var(--border);">Not calibrated</div>
+    </div>
+
+    <div class="controls-row">
   <div id="headerRight">
     <span id="connStatus"><span class="status-dot" id="connDot"></span>Offline</span>
     <span id="headerMode" style="display:none"></span>
