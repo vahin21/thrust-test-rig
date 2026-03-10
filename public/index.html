@@ -447,9 +447,47 @@ function stopRecording() {
 }
 
 /* ─── MOTOR FIRE ─── */
+/* ─── CALIBRATION ─── */
+let isCalibrated = false;
+
+function checkCalibReady() {
+  const w = parseFloat(document.getElementById('knownWeight').value);
+  document.getElementById('calibBtn').disabled = !(w > 0);
+}
+
+async function doCalibrate() {
+  const weight = parseFloat(document.getElementById('knownWeight').value);
+  if (!weight || weight <= 0) return;
+  try {
+    const res = await fetch('/api/calibrate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ weight })
+    });
+    if (res.ok) {
+      isCalibrated = true;
+      document.getElementById('calibStatus').textContent = `✅ Calibrated at ${weight}g`;
+      document.getElementById('calibStatus').style.color = 'var(--green)';
+      document.getElementById('calibStatus').style.borderColor = 'var(--green)';
+      document.getElementById('fireBtn').dataset.calibrated = 'true';
+    } else {
+      document.getElementById('calibStatus').textContent = '⚠ Calibration failed';
+      document.getElementById('calibStatus').style.color = 'var(--accent)';
+    }
+  } catch (e) {
+    document.getElementById('calibStatus').textContent = '⚠ Network error';
+    document.getElementById('calibStatus').style.color = 'var(--accent)';
+  }
+}
+
+/* ─── MOTOR FIRE ─── */
 async function fireMotor() {
   if (!authenticated) return;
-  if (!confirm('⚠ CONFIRM MOTOR FIRE\n\nThis will trigger the igniter relay on the ESP32.\nEnsure area is clear before proceeding.')) return;
+  if (!isCalibrated) {
+    alert('⚠ Scale not calibrated!\n\nEnter a known weight and press Calibrate before firing.');
+    return;
+  }
+  if (!confirm('⚠ CONFIRM MOTOR FIRE\n\nThis will trigger the igniter relay on the ESP32.\nEnsure area is clear before proceeding.')) return;;
   try {
     const res = await fetch('/api/fire', { method: 'POST' });
     const json = await res.json();
