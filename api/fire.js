@@ -28,7 +28,8 @@ export default function handler(req, res) {
 
   // Pulse relay: ON then OFF after 1 second
   client.publish("thrustrig/fire", "ON");
-  setTimeout(() => client.publish("thrustrig/fire", "OFF"), 1000);
+  setTimeout(() => client.publish("thrustrig/fire", "OFF"), 10000);
 
   res.status(200).json({ status: "Ignition triggered" });
 }
+
