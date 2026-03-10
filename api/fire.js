@@ -17,15 +17,18 @@ client.on("message", (topic, message) => {
 });
 
 export default function handler(req, res) {
+  if (req.method !== "POST") return res.status(405).end();
 
   const dataFresh = (Date.now() - lastUpdate) < 3000;
   const loadValid = !isNaN(latestValue);
 
   if (!dataFresh || !loadValid) {
-    return res.status(403).json({ error: "Load cell inactive. Cannot fire." });
+    return res.status(403).json({ error: "Load cell offline. Cannot fire." });
   }
 
+  // Pulse relay: ON then OFF after 1 second
   client.publish("thrustrig/fire", "ON");
+  setTimeout(() => client.publish("thrustrig/fire", "OFF"), 1000);
 
   res.status(200).json({ status: "Ignition triggered" });
 }
