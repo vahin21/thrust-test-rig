@@ -1,271 +1,31 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Cygnus Launch Controller</title>
+  <meta charset="UTF-8"/>
+  <title>Launch</title>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --bg: #0a0c12; --panel: #12151f; --border: #1e2436;
-      --accent: #e84040; --accent2: #f07020; --green: #22c55e;
-      --text: #e2e8f0; --muted: #64748b;
-    }
-    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
-
-    header { width: 100%; background: var(--panel); border-bottom: 1px solid var(--border); padding: 14px 32px; display: flex; align-items: center; justify-content: space-between; }
-    .logo { font-size: 1.2rem; font-weight: 700; letter-spacing: 2px; color: var(--accent); }
-    .logo span { color: var(--text); }
-    .status-dot { width: 10px; height: 10px; border-radius: 50%; background: #444; display: inline-block; margin-right: 6px; transition: background 0.3s; }
-    .status-dot.live { background: var(--green); box-shadow: 0 0 8px var(--green); }
-    #headerRight { display: flex; align-items: center; gap: 16px; font-size: 0.85rem; color: var(--muted); }
-
-    /* LOGIN */
-    #loginSection { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; gap: 20px; padding: 40px; }
-    .login-card { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 48px 56px; width: 360px; display: flex; flex-direction: column; align-items: center; gap: 20px; }
-    .login-card h2 { font-size: 1.4rem; letter-spacing: 1px; }
-    .login-card p { color: var(--muted); font-size: 0.85rem; text-align: center; }
-    .login-card input { width: 100%; padding: 12px 16px; background: #0a0c12; border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 1rem; outline: none; transition: border-color 0.2s; }
-    .login-card input:focus { border-color: var(--accent); }
-    .btn-primary { width: 100%; padding: 12px; background: var(--accent); color: white; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: opacity 0.2s, transform 0.1s; }
-    .btn-primary:hover { opacity: 0.88; }
-    .btn-primary:active { transform: scale(0.97); }
-    #loginError { color: var(--accent); font-size: 0.85rem; display: none; }
-
-    /* LAUNCH DASHBOARD */
-    #launchSection { display: none; flex-direction: column; gap: 24px; width: 100%; max-width: 700px; margin: 40px auto; padding: 0 24px; }
-
-    .safety-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 28px 32px; }
-    .safety-panel h3 { font-size: 0.82rem; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 20px; }
-    .switch-list { display: flex; flex-direction: column; gap: 16px; }
-    .switch-item { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border: 1px solid var(--border); border-radius: 10px; transition: border-color 0.2s, background 0.2s; }
-    .switch-item.armed { border-color: var(--green); background: rgba(34,197,94,0.05); }
-    .switch-left { display: flex; flex-direction: column; gap: 4px; }
-    .switch-name { font-weight: 600; font-size: 0.95rem; }
-    .switch-desc { font-size: 0.78rem; color: var(--muted); }
-
-    .toggle-wrap { position: relative; width: 52px; height: 28px; cursor: pointer; }
-    .toggle-wrap input { opacity: 0; width: 0; height: 0; }
-    .slider { position: absolute; inset: 0; background: #1e2436; border-radius: 28px; transition: background 0.3s; }
-    .slider::before { content: ''; position: absolute; width: 20px; height: 20px; left: 4px; bottom: 4px; background: #64748b; border-radius: 50%; transition: transform 0.3s, background 0.3s; }
-    .toggle-wrap input:checked + .slider { background: rgba(34,197,94,0.25); }
-    .toggle-wrap input:checked + .slider::before { transform: translateX(24px); background: var(--green); }
-
-    .arm-status { text-align: center; padding: 16px; border-radius: 10px; font-size: 0.9rem; font-weight: 600; letter-spacing: 1px; border: 1px solid var(--border); background: rgba(100,116,139,0.1); color: var(--muted); transition: all 0.3s; }
-    .arm-status.armed { background: rgba(34,197,94,0.1); border-color: var(--green); color: var(--green); }
-
-    .launch-btn-wrap { display: flex; justify-content: center; align-items: center; padding: 40px; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; }
-    #launchBtn { width: 220px; height: 220px; border-radius: 50%; font-size: 1.4rem; font-weight: 800; letter-spacing: 2px; background: #1e2436; border: 3px solid var(--border); color: var(--muted); cursor: not-allowed; transition: all 0.3s; }
-    #launchBtn.armed { background: var(--accent); border-color: var(--accent); color: white; cursor: pointer; box-shadow: 0 0 40px rgba(232,64,64,0.4); animation: pulse-launch 2s infinite; }
-    #launchBtn.armed:hover { box-shadow: 0 0 70px rgba(232,64,64,0.7); }
-    #launchBtn.armed:active { transform: scale(0.95); }
-    #launchBtn.fired { background: var(--accent2); border-color: var(--accent2); color: white; animation: none; box-shadow: 0 0 40px rgba(240,112,32,0.5); }
-    @keyframes pulse-launch { 0%,100%{ box-shadow: 0 0 40px rgba(232,64,64,0.4); } 50%{ box-shadow: 0 0 70px rgba(232,64,64,0.7); } }
-
-    .launch-log { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; font-size: 0.82rem; color: var(--muted); font-family: 'Courier New', monospace; max-height: 200px; overflow-y: auto; }
-    .log-entry { padding: 3px 0; border-bottom: 1px solid var(--border); }
-    .log-entry.ok   { color: var(--green); }
-    .log-entry.warn { color: var(--accent2); }
-    .log-entry.err  { color: var(--accent); }
-
-    .btn { padding: 10px 22px; border-radius: 8px; border: none; font-size: 0.92rem; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
-    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
-    .btn-outline:hover { border-color: var(--accent); }
+    body { background: #0a0c12; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; gap: 20px; }
+    button { padding: 20px 60px; font-size: 1.5rem; font-weight: bold; background: #e84040; color: white; border: none; border-radius: 12px; cursor: pointer; }
+    button:hover { opacity: 0.85; }
+    #status { font-size: 1rem; color: #64748b; }
   </style>
 </head>
 <body>
+  <h1>🚀 CYGNUS LAUNCH</h1>
+  <button onclick="fire()">FIRE RELAY</button>
+  <div id="status">Ready</div>
 
-<header>
-  <div class="logo">CYGNUS <span>LAUNCH</span></div>
-  <div id="headerRight">
-    <span id="connStatus"><span class="status-dot" id="connDot"></span>Offline</span>
-    <button class="btn btn-outline" onclick="logout()" id="logoutBtn" style="display:none;padding:6px 14px;font-size:0.8rem;">⎋ Logout</button>
-  </div>
-</header>
-
-<!-- LOGIN -->
-<div id="loginSection">
-  <div class="login-card">
-    <div style="font-size:2.5rem">🚀</div>
-    <h2>CYGNUS LAUNCH</h2>
-    <p>Enter your access credentials to continue</p>
-    <input type="password" id="passwordInput" placeholder="Access password" onkeydown="if(event.key==='Enter')doLogin()" />
-    <div id="loginError">⚠ Incorrect password</div>
-    <button class="btn-primary" onclick="doLogin()">AUTHENTICATE</button>
-  </div>
-</div>
-
-<!-- LAUNCH DASHBOARD -->
-<div id="launchSection">
-
-  <div class="safety-panel">
-    <h3>🔒 Safety Arming Sequence</h3>
-    <div class="switch-list">
-      <div class="switch-item" id="sw_item_1">
-        <div class="switch-left">
-          <span class="switch-name">Master Arm</span>
-          <span class="switch-desc">Primary system enable</span>
-        </div>
-        <label class="toggle-wrap">
-          <input type="checkbox" id="sw1" onchange="updateArming()"/>
-          <span class="slider"></span>
-        </label>
-      </div>
-      <div class="switch-item" id="sw_item_2">
-        <div class="switch-left">
-          <span class="switch-name">Igniter Continuity</span>
-          <span class="switch-desc">Verify igniter circuit is intact</span>
-        </div>
-        <label class="toggle-wrap">
-          <input type="checkbox" id="sw2" onchange="updateArming()"/>
-          <span class="slider"></span>
-        </label>
-      </div>
-      <div class="switch-item" id="sw_item_3">
-        <div class="switch-left">
-          <span class="switch-name">Range Clear</span>
-          <span class="switch-desc">Confirm launch area is clear of all personnel</span>
-        </div>
-        <label class="toggle-wrap">
-          <input type="checkbox" id="sw3" onchange="updateArming()"/>
-          <span class="slider"></span>
-        </label>
-      </div>
-    </div>
-  </div>
-
-  <div class="arm-status" id="armStatus">🔒 SYSTEM NOT ARMED — Enable all safety switches</div>
-
-  <div class="launch-btn-wrap">
-    <button id="launchBtn" onclick="doLaunch()" disabled>LAUNCH</button>
-  </div>
-
-  <div class="launch-log" id="launchLog">
-    <div class="log-entry">[SYSTEM] Launch console ready. Awaiting arm sequence…</div>
-  </div>
-
-</div>
-
-<script>
-let authenticated = false;
-
-/* ─── AUTH ─── */
-function doLogin() {
-  const pw = document.getElementById('passwordInput').value;
-  if (pw === 'Cygnus02') {
-    authenticated = true;
-    document.getElementById('loginSection').style.display = 'none';
-    document.getElementById('launchSection').style.display = 'flex';
-    document.getElementById('logoutBtn').style.display = '';
-    startPing();
-    addLog('ok', '[AUTH] Access granted.');
-  } else {
-    document.getElementById('loginError').style.display = '';
-    document.getElementById('passwordInput').value = '';
-    setTimeout(() => document.getElementById('loginError').style.display = 'none', 3000);
-  }
-}
-
-function logout() {
-  authenticated = false;
-  document.getElementById('loginSection').style.display = 'flex';
-  document.getElementById('launchSection').style.display = 'none';
-  document.getElementById('logoutBtn').style.display = 'none';
-  document.getElementById('passwordInput').value = '';
-  ['sw1','sw2','sw3'].forEach(id => document.getElementById(id).checked = false);
-  updateArming();
-}
-
-/* ─── CONNECTION PING ─── */
-function startPing() {
-  setInterval(async () => {
-    try {
-      const res = await fetch('/api/data');
-      const json = await res.json();
-      const fresh = json.lastUpdate && (Date.now() - json.lastUpdate) < 5000;
-      document.getElementById('connDot').className = 'status-dot' + (fresh ? ' live' : '');
-      document.getElementById('connStatus').innerHTML =
-        `<span class="status-dot${fresh ? ' live' : ''}"></span>${fresh ? 'Connected' : 'Offline'}`;
-    } catch (e) {
-      document.getElementById('connDot').className = 'status-dot';
-      document.getElementById('connStatus').innerHTML = '<span class="status-dot"></span>Offline';
+  <script>
+    async function fire() {
+      document.getElementById('status').textContent = 'Firing...';
+      try {
+        const res = await fetch('/api/launch', { method: 'POST' });
+        const json = await res.json();
+        document.getElementById('status').textContent = '✅ ' + json.status;
+      } catch(e) {
+        document.getElementById('status').textContent = '⚠ Error: ' + e.message;
+      }
     }
-  }, 2000);
-}
-
-/* ─── ARMING ─── */
-function updateArming() {
-  const sw1 = document.getElementById('sw1').checked;
-  const sw2 = document.getElementById('sw2').checked;
-  const sw3 = document.getElementById('sw3').checked;
-
-  ['sw_item_1','sw_item_2','sw_item_3'].forEach((id, i) => {
-    document.getElementById(id).classList.toggle('armed', [sw1,sw2,sw3][i]);
-  });
-
-  const allArmed = sw1 && sw2 && sw3;
-  const status = document.getElementById('armStatus');
-  const btn = document.getElementById('launchBtn');
-
-  if (allArmed) {
-    status.textContent = '✅ ALL SYSTEMS ARMED — LAUNCH ENABLED';
-    status.className = 'arm-status armed';
-    btn.disabled = false;
-    btn.className = 'armed';
-    addLog('warn', '[SAFETY] ⚠ All switches ARMED. Launch is live.');
-  } else {
-    const remaining = 3 - [sw1,sw2,sw3].filter(Boolean).length;
-    status.textContent = `🔒 SYSTEM NOT ARMED — ${remaining} switch${remaining !== 1 ? 'es' : ''} remaining`;
-    status.className = 'arm-status';
-    btn.disabled = true;
-    btn.className = '';
-  }
-}
-
-/* ─── LAUNCH ─── */
-async function doLaunch() {
-  const sw1 = document.getElementById('sw1').checked;
-  const sw2 = document.getElementById('sw2').checked;
-  const sw3 = document.getElementById('sw3').checked;
-  if (!sw1 || !sw2 || !sw3) return;
-
-  if (!confirm('🚀 LAUNCH CONFIRMATION\n\nAll safety switches armed.\nThis sends the LAUNCH command to the ESP8266 relay.\n\nProceed?')) {
-    addLog('warn', '[LAUNCH] Launch aborted by operator.');
-    return;
-  }
-
-  addLog('warn', '[LAUNCH] 🚀 Launch command transmitted!');
-
-  try {
-    const res = await fetch('/api/launch', { method: 'POST' });
-    const json = await res.json();
-    if (res.ok) {
-      document.getElementById('launchBtn').className = 'fired';
-      addLog('ok', '[LAUNCH] ✅ ESP8266 relay triggered. Ignition initiated.');
-      setTimeout(() => {
-        ['sw1','sw2','sw3'].forEach(id => { document.getElementById(id).checked = false; });
-        updateArming();
-        addLog('ok', '[SAFETY] Switches auto-disarmed post-launch.');
-      }, 3000);
-    } else {
-      addLog('err', '[LAUNCH] ⚠ Rejected: ' + (json.error || 'Unknown'));
-    }
-  } catch (e) {
-    addLog('err', '[LAUNCH] Network error: ' + e.message);
-  }
-}
-
-/* ─── LOG ─── */
-function addLog(type, msg) {
-  const log = document.getElementById('launchLog');
-  const ts = new Date().toLocaleTimeString();
-  const div = document.createElement('div');
-  div.className = `log-entry ${type}`;
-  div.textContent = `[${ts}] ${msg}`;
-  log.appendChild(div);
-  log.scrollTop = log.scrollHeight;
-}
-</script>
-
+  </script>
 </body>
 </html>
