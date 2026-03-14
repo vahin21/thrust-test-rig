@@ -9,4 +9,7 @@ export default function handler(req, res) {
     client.end();
     res.status(200).json({ status: "Fired" });
   });
+  client.on("error", () => {
+    res.status(500).json({ error: "MQTT failed" });
+  });
 }
