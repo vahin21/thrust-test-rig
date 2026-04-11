@@ -3,118 +3,672 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Cygnus Launch</title>
+  <title>Cygnus Rig</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
       --bg: #0a0c12; --panel: #12151f; --border: #1e2436;
-      --accent: #e84040; --green: #22c55e; --text: #e2e8f0; --muted: #64748b;
+      --accent: #e84040; --accent2: #f07020; --green: #22c55e;
+      --text: #e2e8f0; --muted: #64748b;
     }
-    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 32px; padding: 24px; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
 
-    /* LOGIN */
-    #loginSection { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 48px 56px; width: 340px; display: flex; flex-direction: column; align-items: center; gap: 20px; }
-    #loginSection h2 { font-size: 1.4rem; letter-spacing: 1px; }
-    #loginSection p { color: var(--muted); font-size: 0.85rem; }
-    #loginSection input { width: 100%; padding: 12px 16px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 1rem; outline: none; }
-    #loginSection input:focus { border-color: var(--accent); }
-    #loginBtn { width: 100%; padding: 12px; background: var(--accent); color: white; border: none; border-radius: 8px; font-size: 1rem; font-weight: 700; cursor: pointer; }
-    #loginBtn:hover { opacity: 0.85; }
+    header { width: 100%; background: var(--panel); border-bottom: 1px solid var(--border); padding: 14px 32px; display: flex; align-items: center; justify-content: space-between; }
+    .logo { font-size: 1.2rem; font-weight: 700; letter-spacing: 2px; color: var(--accent); }
+    .logo span { color: var(--text); }
+    #headerRight { display: flex; align-items: center; gap: 16px; font-size: 0.85rem; color: var(--muted); }
+    .btn-sm { background: none; border: 1px solid var(--border); color: var(--muted); padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 0.8rem; }
+    .btn-sm:hover { border-color: var(--accent); color: var(--text); }
+
+    /* ── LOGIN ── */
+    #loginSection { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; padding: 40px; }
+    .login-card { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 48px 56px; width: 360px; display: flex; flex-direction: column; align-items: center; gap: 20px; }
+    .login-card h2 { font-size: 1.4rem; letter-spacing: 1px; }
+    .login-card p { color: var(--muted); font-size: 0.85rem; text-align: center; }
+    .login-card input { width: 100%; padding: 12px 16px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 1rem; outline: none; transition: border-color 0.2s; }
+    .login-card input:focus { border-color: var(--accent); }
+    .btn-primary { width: 100%; padding: 12px; background: var(--accent); color: white; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; }
+    .btn-primary:hover { opacity: 0.88; }
     #loginError { color: var(--accent); font-size: 0.85rem; display: none; }
 
-    /* DASHBOARD */
-    #dashSection { display: none; flex-direction: column; align-items: center; gap: 32px; width: 100%; max-width: 420px; }
-    h1 { font-size: 1.4rem; letter-spacing: 2px; color: var(--accent); }
+    /* ── MODE SELECT ── */
+    #modeSection { display: none; flex-direction: column; align-items: center; justify-content: center; flex: 1; gap: 32px; padding: 40px; }
+    #modeSection h2 { font-size: 1.1rem; color: var(--muted); letter-spacing: 1px; }
+    .mode-grid { display: flex; gap: 24px; }
+    .mode-card { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 48px 56px; text-align: center; cursor: pointer; transition: border-color 0.2s, transform 0.15s; width: 260px; }
+    .mode-card:hover { border-color: var(--accent); transform: translateY(-4px); }
+    .mode-card .icon { font-size: 3rem; margin-bottom: 16px; }
+    .mode-card h3 { font-size: 1.2rem; margin-bottom: 8px; }
+    .mode-card p { font-size: 0.82rem; color: var(--muted); }
 
-    .fire-wrap { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 48px; display: flex; justify-content: center; }
-    #fireBtn {
-      width: 200px; height: 200px; border-radius: 50%;
-      background: var(--accent); border: 3px solid var(--accent);
-      color: white; font-size: 1.3rem; font-weight: 800; letter-spacing: 2px;
-      cursor: pointer; transition: all 0.2s;
-      box-shadow: 0 0 40px rgba(232,64,64,0.4);
+    /* ── SHARED DASH ── */
+    .dash { display: none; flex-direction: column; width: 100%; max-width: 1100px; padding: 24px 32px; gap: 20px; }
+    .dash-top { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+    .back-btn { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 8px; padding: 8px 14px; cursor: pointer; font-size: 0.85rem; }
+    .back-btn:hover { border-color: var(--accent); color: var(--text); }
+    .tag { font-size: 0.75rem; padding: 4px 10px; border-radius: 20px; font-weight: 600; letter-spacing: 0.5px; }
+    .tag-motor  { background: rgba(232,64,64,0.15); color: var(--accent); }
+    .tag-launch { background: rgba(240,112,32,0.15); color: var(--accent2); }
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
+    .panel-title { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
+    .btn { padding: 10px 22px; border-radius: 8px; border: none; font-size: 0.92rem; font-weight: 600; cursor: pointer; transition: opacity 0.2s, transform 0.1s; }
+    .btn:active { transform: scale(0.96); }
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .btn-red   { background: var(--accent); color: white; }
+    .btn-red:hover:not(:disabled)   { opacity: 0.85; }
+    .btn-green { background: var(--green); color: #000; }
+    .btn-green:hover:not(:disabled) { opacity: 0.85; }
+    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    .btn-outline:hover:not(:disabled) { border-color: var(--accent); }
+    .row { display: flex; gap: 16px; flex-wrap: wrap; }
+
+    /* ── MOTOR ── */
+    .metric-card { flex: 1; min-width: 140px; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 18px 22px; }
+    .metric-label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+    .metric-val { font-size: 1.9rem; font-weight: 700; }
+    .metric-unit { font-size: 0.82rem; color: var(--muted); margin-left: 3px; }
+    .calib-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .calib-row input { padding: 10px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 0.95rem; outline: none; width: 180px; }
+    .calib-row input:focus { border-color: var(--accent); }
+    #calibStatus { font-size: 0.82rem; color: var(--muted); padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); }
+    .controls { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+
+    /* motor fire button */
+    #mFireBtn { font-size: 1rem; padding: 12px 36px; letter-spacing: 1px; }
+
+    .results-panel { display: none; }
+    .results-grid { display: flex; gap: 24px; flex-wrap: wrap; margin-top: 4px; }
+    .result-item .rl { font-size: 0.72rem; color: var(--muted); }
+    .result-item .rv { font-size: 1.4rem; font-weight: 700; color: var(--green); }
+
+    /* ── LAUNCH ── */
+    .switch-list { display: flex; flex-direction: column; gap: 14px; }
+    .switch-item { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border: 1px solid var(--border); border-radius: 10px; transition: border-color 0.2s; }
+    .switch-item.armed { border-color: var(--green); background: rgba(34,197,94,0.05); }
+    .switch-left { display: flex; flex-direction: column; gap: 3px; }
+    .switch-name { font-weight: 600; font-size: 0.95rem; }
+    .switch-desc { font-size: 0.78rem; color: var(--muted); }
+    .toggle-wrap { position: relative; width: 52px; height: 28px; cursor: pointer; }
+    .toggle-wrap input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; inset: 0; background: #1e2436; border-radius: 28px; transition: background 0.3s; }
+    .slider::before { content: ''; position: absolute; width: 20px; height: 20px; left: 4px; bottom: 4px; background: #64748b; border-radius: 50%; transition: transform 0.3s, background 0.3s; }
+    .toggle-wrap input:checked + .slider { background: rgba(34,197,94,0.25); }
+    .toggle-wrap input:checked + .slider::before { transform: translateX(24px); background: var(--green); }
+    .arm-status { text-align: center; padding: 14px; border-radius: 10px; font-size: 0.9rem; font-weight: 600; letter-spacing: 0.5px; border: 1px solid var(--border); background: rgba(100,116,139,0.1); color: var(--muted); transition: all 0.3s; }
+    .arm-status.armed { background: rgba(34,197,94,0.1); border-color: var(--green); color: var(--green); }
+
+    .launch-btns { display: flex; justify-content: center; gap: 32px; align-items: center; padding: 40px; }
+    #lLaunchBtn {
+      width: 180px; height: 180px; border-radius: 50%;
+      background: #1e2436; border: 3px solid var(--border);
+      color: var(--muted); font-size: 1.1rem; font-weight: 800;
+      letter-spacing: 2px; cursor: not-allowed; transition: all 0.3s;
+    }
+    #lLaunchBtn.armed {
+      background: var(--accent); border-color: var(--accent); color: white;
+      cursor: pointer; box-shadow: 0 0 40px rgba(232,64,64,0.4);
       animation: pulse 2s infinite;
     }
-    #fireBtn:hover { box-shadow: 0 0 70px rgba(232,64,64,0.7); }
-    #fireBtn:active { transform: scale(0.95); }
-    #fireBtn:disabled { opacity: 0.4; cursor: not-allowed; animation: none; }
+    #lLaunchBtn.armed:hover { box-shadow: 0 0 70px rgba(232,64,64,0.7); }
+    #lLaunchBtn.armed:active { transform: scale(0.95); }
+    #lOffBtn {
+      width: 140px; height: 140px; border-radius: 50%;
+      background: #1e2436; border: 3px solid var(--border);
+      color: var(--muted); font-size: 1rem; font-weight: 800;
+      letter-spacing: 2px; cursor: not-allowed; transition: all 0.3s;
+    }
+    #lOffBtn.active {
+      background: var(--green); border-color: var(--green); color: #000;
+      cursor: pointer; box-shadow: 0 0 40px rgba(34,197,94,0.4);
+    }
+    #lOffBtn.active:hover { box-shadow: 0 0 60px rgba(34,197,94,0.6); }
+    #lOffBtn.active:active { transform: scale(0.95); }
+
     @keyframes pulse { 0%,100%{ box-shadow: 0 0 40px rgba(232,64,64,0.4); } 50%{ box-shadow: 0 0 70px rgba(232,64,64,0.7); } }
 
-    #status { font-size: 0.95rem; color: var(--muted); padding: 12px 24px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; width: 100%; text-align: center; }
-    #status.ok  { color: var(--green);  border-color: var(--green); }
-    #status.err { color: var(--accent); border-color: var(--accent); }
+    .launch-log { font-size: 0.82rem; color: var(--muted); font-family: 'Courier New', monospace; max-height: 160px; overflow-y: auto; }
+    .log-entry { padding: 3px 0; border-bottom: 1px solid var(--border); }
+    .log-entry.ok   { color: var(--green); }
+    .log-entry.warn { color: var(--accent2); }
+    .log-entry.err  { color: var(--accent); }
 
-    .logout { background: none; border: 1px solid var(--border); color: var(--muted); padding: 8px 20px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; }
-    .logout:hover { border-color: var(--accent); color: var(--text); }
+    canvas { width: 100% !important; }
+    #lStatus { text-align:center; font-size:0.9rem; padding: 10px; border-radius: 8px; border: 1px solid var(--border); color: var(--muted); }
+    #lStatus.on  { color: var(--accent);  border-color: var(--accent); }
+    #lStatus.off { color: var(--green);   border-color: var(--green); }
   </style>
 </head>
 <body>
 
+<header>
+  <div class="logo">CYGNUS <span>RIG</span></div>
+  <div id="headerRight">
+    <span id="headerMode" style="display:none"></span>
+    <button class="btn-sm" onclick="logout()" id="logoutBtn" style="display:none">⎋ Logout</button>
+  </div>
+</header>
+
 <!-- LOGIN -->
 <div id="loginSection">
-  <div style="font-size:2.5rem">🚀</div>
-  <h2>CYGNUS LAUNCH</h2>
-  <p>Enter password to continue</p>
-  <input type="password" id="pwInput" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()"/>
-  <div id="loginError">⚠ Incorrect password</div>
-  <button id="loginBtn" onclick="doLogin()">AUTHENTICATE</button>
+  <div class="login-card">
+    <div style="font-size:2.5rem">🛸</div>
+    <h2>CYGNUS RIG</h2>
+    <p>Enter your access credentials to continue</p>
+    <input type="password" id="pwInput" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()"/>
+    <div id="loginError">⚠ Incorrect password</div>
+    <button class="btn-primary" onclick="doLogin()">AUTHENTICATE</button>
+  </div>
 </div>
 
-<!-- DASHBOARD -->
-<div id="dashSection">
-  <h1>🚀 CYGNUS LAUNCH</h1>
-  <div class="fire-wrap">
-    <button id="fireBtn" onclick="fire()">FIRE</button>
+<!-- MODE SELECT -->
+<div id="modeSection">
+  <h2>SELECT OPERATION MODE</h2>
+  <div class="mode-grid">
+    <div class="mode-card" onclick="enterMode('motor')">
+      <div class="icon">🔥</div>
+      <h3>Motor Test</h3>
+      <p>Live thrust curve, calibration, tare, fire relay, CSV download, max thrust and impulse</p>
+    </div>
+    <div class="mode-card" onclick="enterMode('launch')">
+      <div class="icon">🚀</div>
+      <h3>Rocket Launch</h3>
+      <p>Safety arming sequence and relay-controlled ignition for launch operations</p>
+    </div>
   </div>
-  <div id="status">Ready to fire</div>
-  <button class="logout" onclick="logout()">⎋ Logout</button>
 </div>
+
+<!-- ══════════ MOTOR TEST DASH ══════════ -->
+<div class="dash" id="motorDash">
+  <div class="dash-top">
+    <button class="back-btn" onclick="goBack()">← Back</button>
+    <h1 style="font-size:1.2rem;letter-spacing:1px">Motor Test</h1>
+    <span class="tag tag-motor">MOTOR TEST</span>
+  </div>
+
+  <!-- Metrics -->
+  <div class="row">
+    <div class="metric-card">
+      <div class="metric-label">Live Thrust</div>
+      <div class="metric-val" id="mLive">—<span class="metric-unit">N</span></div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Max Thrust</div>
+      <div class="metric-val" id="mMax">—<span class="metric-unit">N</span></div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Burn Time</div>
+      <div class="metric-val" id="mBurn">—<span class="metric-unit">s</span></div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Total Impulse</div>
+      <div class="metric-val" id="mImpulse">—<span class="metric-unit">Ns</span></div>
+    </div>
+  </div>
+
+  <!-- Chart -->
+  <div class="panel">
+    <div class="panel-title">Thrust vs Time</div>
+    <canvas id="thrustChart" height="280"></canvas>
+  </div>
+
+  <!-- Calibration -->
+  <div class="panel">
+    <div class="panel-title">Scale Setup</div>
+    <div class="calib-row">
+      <input type="number" id="calibWeight" placeholder="Known weight (g)" min="0" oninput="checkCalib()"/>
+      <button class="btn btn-outline" id="calibBtn" onclick="doCalib()" disabled>⚖ Calibrate</button>
+      <button class="btn btn-outline" onclick="doTare()">↻ Tare</button>
+      <div id="calibStatus">Not calibrated</div>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="panel">
+    <div class="panel-title">Controls</div>
+    <div class="controls">
+      <button class="btn btn-red" id="mFireBtn" onclick="mFire()">⚡ FIRE MOTOR</button>
+      <button class="btn btn-outline" id="mOffBtn" onclick="mOff()" disabled>⬛ OFF</button>
+      <button class="btn btn-outline" onclick="clearGraph()">Clear Graph</button>
+      <button class="btn btn-green" id="csvBtn" onclick="downloadCSV()" style="display:none">⬇ Download CSV</button>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div class="panel results-panel" id="resultsPanel">
+    <div class="panel-title">Test Results</div>
+    <div class="results-grid">
+      <div class="result-item"><div class="rl">Max Thrust</div><div class="rv" id="rMax">—</div></div>
+      <div class="result-item"><div class="rl">Avg Thrust</div><div class="rv" id="rAvg">—</div></div>
+      <div class="result-item"><div class="rl">Burn Time</div><div class="rv" id="rBurn">—</div></div>
+      <div class="result-item"><div class="rl">Total Impulse</div><div class="rv" id="rImp">—</div></div>
+      <div class="result-item"><div class="rl">Motor Class</div><div class="rv" id="rClass">—</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ LAUNCH DASH ══════════ -->
+<div class="dash" id="launchDash">
+  <div class="dash-top">
+    <button class="back-btn" onclick="goBack()">← Back</button>
+    <h1 style="font-size:1.2rem;letter-spacing:1px">Rocket Launch</h1>
+    <span class="tag tag-launch">LAUNCH</span>
+  </div>
+
+  <!-- Safety switches -->
+  <div class="panel">
+    <div class="panel-title">🔒 Safety Arming Sequence</div>
+    <div class="switch-list">
+      <div class="switch-item" id="lsw_1">
+        <div class="switch-left">
+          <span class="switch-name">Master Arm</span>
+          <span class="switch-desc">Primary system enable</span>
+        </div>
+        <label class="toggle-wrap">
+          <input type="checkbox" id="lsw1" onchange="updateArming()"/>
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="switch-item" id="lsw_2">
+        <div class="switch-left">
+          <span class="switch-name">Igniter Continuity</span>
+          <span class="switch-desc">Verify igniter circuit is intact</span>
+        </div>
+        <label class="toggle-wrap">
+          <input type="checkbox" id="lsw2" onchange="updateArming()"/>
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="switch-item" id="lsw_3">
+        <div class="switch-left">
+          <span class="switch-name">Range Clear</span>
+          <span class="switch-desc">All personnel clear of launch area</span>
+        </div>
+        <label class="toggle-wrap">
+          <input type="checkbox" id="lsw3" onchange="updateArming()"/>
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <div class="arm-status" id="armStatus">🔒 NOT ARMED — Enable all 3 safety switches</div>
+
+  <div id="lStatus">Relay OFF</div>
+
+  <div class="panel">
+    <div class="launch-btns">
+      <button id="lLaunchBtn" onclick="doLaunch()" disabled>LAUNCH</button>
+      <button id="lOffBtn"    onclick="doLaunchOff()" disabled>OFF</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Event Log</div>
+    <div class="launch-log" id="launchLog">
+      <div class="log-entry">[SYSTEM] Launch console ready.</div>
+    </div>
+  </div>
+</div>
+
 
 <script>
-  function doLogin() {
-    const pw = document.getElementById('pwInput').value;
-    if (pw === 'Cygnus02') {
-      document.getElementById('loginSection').style.display = 'none';
-      document.getElementById('dashSection').style.display = 'flex';
-    } else {
-      document.getElementById('loginError').style.display = '';
-      document.getElementById('pwInput').value = '';
-      setTimeout(() => document.getElementById('loginError').style.display = 'none', 3000);
-    }
-  }
+/* ═══════════════════════════════════════
+   STATE
+═══════════════════════════════════════ */
+let authenticated = false;
+let motorInterval = null;
+let isCalibrated  = false;
+let recording     = false;
+let motorStart    = null;
+let thrustData    = [];
+let maxThrust     = 0;
+let burnStart     = null;
+let burnEnd       = null;
 
-  function logout() {
-    document.getElementById('loginSection').style.display = 'flex';
-    document.getElementById('dashSection').style.display = 'none';
+/* ═══════════════════════════════════════
+   AUTH
+═══════════════════════════════════════ */
+function doLogin() {
+  const pw = document.getElementById('pwInput').value;
+  if (pw === 'Cygnus02') {
+    authenticated = true;
+    document.getElementById('loginSection').style.display = 'none';
+    document.getElementById('modeSection').style.display = 'flex';
+    document.getElementById('logoutBtn').style.display = '';
+  } else {
+    document.getElementById('loginError').style.display = '';
     document.getElementById('pwInput').value = '';
+    setTimeout(() => document.getElementById('loginError').style.display = 'none', 3000);
   }
+}
 
-  async function fire() {
-    const btn = document.getElementById('fireBtn');
-    const status = document.getElementById('status');
-    btn.disabled = true;
-    status.className = '';
-    status.textContent = 'Firing...';
-    try {
-      const res = await fetch('/api/launch', { method: 'POST' });
-      const json = await res.json();
-      if (res.ok) {
-        status.className = 'ok';
-        status.textContent = '✅ Relay fired!';
-      } else {
-        status.className = 'err';
-        status.textContent = '⚠ ' + (json.error || 'Failed');
-      }
-    } catch (e) {
-      status.className = 'err';
-      status.textContent = '⚠ Network error';
-    }
-    setTimeout(() => {
-      btn.disabled = false;
-      status.className = '';
-      status.textContent = 'Ready to fire';
-    }, 4000);
+function logout() {
+  authenticated = false;
+  stopMotorLoop();
+  document.getElementById('loginSection').style.display = 'flex';
+  document.getElementById('modeSection').style.display = 'none';
+  document.getElementById('motorDash').style.display = 'none';
+  document.getElementById('launchDash').style.display = 'none';
+  document.getElementById('logoutBtn').style.display = 'none';
+  document.getElementById('headerMode').style.display = 'none';
+  document.getElementById('pwInput').value = '';
+}
+
+/* ═══════════════════════════════════════
+   ROUTING
+═══════════════════════════════════════ */
+function enterMode(mode) {
+  document.getElementById('modeSection').style.display = 'none';
+  document.getElementById('headerMode').style.display = '';
+  if (mode === 'motor') {
+    document.getElementById('motorDash').style.display = 'flex';
+    document.getElementById('headerMode').textContent = '🔥 Motor Test';
+    startMotorLoop();
+  } else {
+    document.getElementById('launchDash').style.display = 'flex';
+    document.getElementById('headerMode').textContent = '🚀 Launch';
   }
+}
+
+function goBack() {
+  stopMotorLoop();
+  document.getElementById('motorDash').style.display = 'none';
+  document.getElementById('launchDash').style.display = 'none';
+  document.getElementById('modeSection').style.display = 'flex';
+  document.getElementById('headerMode').style.display = 'none';
+}
+
+/* ═══════════════════════════════════════
+   CHART
+═══════════════════════════════════════ */
+const ctx = document.getElementById('thrustChart').getContext('2d');
+const chart = new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: [],
+    datasets: [{
+      label: 'Thrust (N)',
+      data: [],
+      borderColor: '#e84040',
+      backgroundColor: 'rgba(232,64,64,0.07)',
+      borderWidth: 2,
+      tension: 0.3,
+      pointRadius: 0,
+      fill: true
+    }]
+  },
+  options: {
+    animation: false,
+    responsive: true,
+    plugins: { legend: { labels: { color: '#e2e8f0' } } },
+    scales: {
+      x: { title: { display: true, text: 'Time (s)', color: '#64748b' }, ticks: { color: '#64748b', maxTicksLimit: 10 }, grid: { color: '#1e2436' } },
+      y: { title: { display: true, text: 'Thrust (N)', color: '#64748b' }, ticks: { color: '#64748b' }, grid: { color: '#1e2436' }, min: 0 }
+    }
+  }
+});
+
+function clearGraph() {
+  chart.data.labels = [];
+  chart.data.datasets[0].data = [];
+  chart.update();
+  thrustData = []; motorStart = null; recording = false; maxThrust = 0;
+  burnStart = null; burnEnd = null;
+  document.getElementById('csvBtn').style.display = 'none';
+  document.getElementById('resultsPanel').style.display = 'none';
+  setMetric('mMax','—','N'); setMetric('mBurn','—','s'); setMetric('mImpulse','—','Ns');
+}
+
+function setMetric(id, val, unit) {
+  document.getElementById(id).innerHTML = val + '<span class="metric-unit">' + unit + '</span>';
+}
+
+/* ═══════════════════════════════════════
+   MOTOR DATA LOOP
+═══════════════════════════════════════ */
+function startMotorLoop() {
+  if (motorInterval) clearInterval(motorInterval);
+  motorInterval = setInterval(pollMotor, 300);
+}
+function stopMotorLoop() {
+  if (motorInterval) clearInterval(motorInterval);
+  motorInterval = null;
+}
+
+async function pollMotor() {
+  try {
+    const res  = await fetch('/api/motor-data');
+    const json = await res.json();
+    const thrust = parseFloat(json.thrust) || 0;
+
+    setMetric('mLive', thrust.toFixed(2), 'N');
+
+    if (recording) {
+      const t = parseFloat(((Date.now() - motorStart) / 1000).toFixed(3));
+      thrustData.push({ t, v: thrust });
+
+      if (thrust > maxThrust) {
+        maxThrust = thrust;
+        setMetric('mMax', maxThrust.toFixed(2), 'N');
+      }
+
+      // Burn time tracking
+      if (thrust > 0.5) {
+        if (!burnStart) burnStart = t;
+        burnEnd = t;
+      }
+
+      chart.data.labels.push(t.toFixed(2));
+      chart.data.datasets[0].data.push(thrust);
+      chart.update();
+
+      const bt = (Date.now() - motorStart) / 1000;
+      setMetric('mBurn', bt.toFixed(1), 's');
+      setMetric('mImpulse', calcImpulse().toFixed(2), 'Ns');
+    }
+  } catch(e) {}
+}
+
+function calcImpulse() {
+  if (thrustData.length < 2) return 0;
+  let I = 0;
+  for (let i = 1; i < thrustData.length; i++) {
+    const dt = thrustData[i].t - thrustData[i-1].t;
+    I += 0.5 * (thrustData[i].v + thrustData[i-1].v) * dt;
+  }
+  return I;
+}
+
+function getMotorClass(impulse) {
+  const classes = [[0.3125,'A'],[0.625,'B'],[1.25,'C'],[2.5,'D'],[5,'E'],[10,'F'],[20,'G'],[40,'H'],[80,'I'],[160,'J'],[320,'K'],[640,'L'],[1280,'M']];
+  for (const [max, name] of classes) if (impulse <= max) return name;
+  return 'N+';
+}
+
+function showResults() {
+  const impulse = calcImpulse();
+  const bt = burnStart !== null ? (burnEnd - burnStart).toFixed(2) : '—';
+  const avg = thrustData.length ? (thrustData.reduce((s,d)=>s+d.v,0)/thrustData.length).toFixed(2) : '—';
+  document.getElementById('rMax').textContent   = maxThrust.toFixed(2) + ' N';
+  document.getElementById('rAvg').textContent   = avg + ' N';
+  document.getElementById('rBurn').textContent  = bt + ' s';
+  document.getElementById('rImp').textContent   = impulse.toFixed(2) + ' Ns';
+  document.getElementById('rClass').textContent = getMotorClass(impulse);
+  document.getElementById('resultsPanel').style.display = '';
+  document.getElementById('csvBtn').style.display = '';
+}
+
+/* ═══════════════════════════════════════
+   CALIBRATION / TARE
+═══════════════════════════════════════ */
+function checkCalib() {
+  const w = parseFloat(document.getElementById('calibWeight').value);
+  document.getElementById('calibBtn').disabled = !(w > 0);
+}
+
+async function doCalib() {
+  const weight = parseFloat(document.getElementById('calibWeight').value);
+  if (!weight || weight <= 0) return;
+  try {
+    const res = await fetch('/api/motor-calibrate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ weight })
+    });
+    if (res.ok) {
+      isCalibrated = true;
+      const el = document.getElementById('calibStatus');
+      el.textContent = '✅ Calibrated at ' + weight + 'g';
+      el.style.color = 'var(--green)';
+      el.style.borderColor = 'var(--green)';
+    }
+  } catch(e) {}
+}
+
+async function doTare() {
+  try { await fetch('/api/motor-tare'); } catch(e) {}
+}
+
+/* ═══════════════════════════════════════
+   MOTOR FIRE / OFF
+═══════════════════════════════════════ */
+async function mFire() {
+  if (!isCalibrated) { alert('⚠ Calibrate the scale first before firing.'); return; }
+  if (!confirm('⚠ CONFIRM MOTOR FIRE\n\nThis triggers the igniter relay.\nEnsure area is clear.')) return;
+  try {
+    const res  = await fetch('/api/motor-fire', { method: 'POST' });
+    const json = await res.json();
+    if (res.ok) {
+      recording = true; motorStart = Date.now(); maxThrust = 0;
+      thrustData = []; burnStart = null; burnEnd = null;
+      chart.data.labels = []; chart.data.datasets[0].data = []; chart.update();
+      document.getElementById('resultsPanel').style.display = 'none';
+      document.getElementById('csvBtn').style.display = 'none';
+      document.getElementById('mFireBtn').disabled = true;
+      document.getElementById('mOffBtn').disabled = false;
+    } else {
+      alert('⚠ ' + (json.error || 'Fire failed'));
+    }
+  } catch(e) { alert('⚠ Network error'); }
+}
+
+async function mOff() {
+  try {
+    await fetch('/api/motor-off', { method: 'POST' });
+    recording = false;
+    document.getElementById('mFireBtn').disabled = false;
+    document.getElementById('mOffBtn').disabled = true;
+    showResults();
+  } catch(e) {}
+}
+
+/* ═══════════════════════════════════════
+   CSV
+═══════════════════════════════════════ */
+function downloadCSV() {
+  if (!thrustData.length) return;
+  let csv = 'Time_s,Thrust_N\r\n';
+  thrustData.forEach(r => { csv += r.t + ',' + r.v + '\r\n'; });
+  const ts   = new Date().toISOString().replace(/[:.]/g,'_');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a    = document.createElement('a');
+  a.href     = URL.createObjectURL(blob);
+  a.download = 'cygnus_motor_' + ts + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+}
+
+/* ═══════════════════════════════════════
+   LAUNCH ARMING
+═══════════════════════════════════════ */
+function updateArming() {
+  const s1 = document.getElementById('lsw1').checked;
+  const s2 = document.getElementById('lsw2').checked;
+  const s3 = document.getElementById('lsw3').checked;
+  [['lsw_1',s1],['lsw_2',s2],['lsw_3',s3]].forEach(([id,v]) => {
+    document.getElementById(id).classList.toggle('armed', v);
+  });
+  const all = s1 && s2 && s3;
+  const status = document.getElementById('armStatus');
+  const btn    = document.getElementById('lLaunchBtn');
+  if (all) {
+    status.textContent = '✅ ALL SYSTEMS ARMED — LAUNCH ENABLED';
+    status.className = 'arm-status armed';
+    btn.disabled = false;
+    btn.className = 'armed';
+    lLog('warn', '[SAFETY] All switches ARMED. Launch live.');
+  } else {
+    const rem = 3 - [s1,s2,s3].filter(Boolean).length;
+    status.textContent = '🔒 NOT ARMED — ' + rem + ' switch' + (rem!==1?'es':'') + ' remaining';
+    status.className = 'arm-status';
+    btn.disabled = true;
+    btn.className = '';
+  }
+}
+
+/* ═══════════════════════════════════════
+   LAUNCH FIRE / OFF
+═══════════════════════════════════════ */
+async function doLaunch() {
+  if (!document.getElementById('lsw1').checked ||
+      !document.getElementById('lsw2').checked ||
+      !document.getElementById('lsw3').checked) return;
+  if (!confirm('🚀 LAUNCH CONFIRMATION\n\nProceed with launch?')) {
+    lLog('warn', '[LAUNCH] Aborted by operator.');
+    return;
+  }
+  lLog('warn', '[LAUNCH] Command transmitted!');
+  try {
+    const res  = await fetch('/api/launch-fire', { method: 'POST' });
+    const json = await res.json();
+    if (res.ok) {
+      lLog('ok', '[LAUNCH] Relay ON. Ignition initiated.');
+      document.getElementById('lLaunchBtn').disabled = true;
+      document.getElementById('lLaunchBtn').className = '';
+      document.getElementById('lOffBtn').disabled = false;
+      document.getElementById('lOffBtn').className = 'active';
+      document.getElementById('lStatus').textContent = '🔴 Relay ON';
+      document.getElementById('lStatus').className = 'on';
+    } else {
+      lLog('err', '[LAUNCH] Rejected: ' + (json.error || 'Unknown'));
+    }
+  } catch(e) {
+    lLog('err', '[LAUNCH] Network error: ' + e.message);
+  }
+}
+
+async function doLaunchOff() {
+  try {
+    await fetch('/api/launch-off', { method: 'POST' });
+    lLog('ok', '[LAUNCH] Relay OFF.');
+    document.getElementById('lOffBtn').disabled = true;
+    document.getElementById('lOffBtn').className = '';
+    document.getElementById('lStatus').textContent = '✅ Relay OFF';
+    document.getElementById('lStatus').className = 'off';
+    // disarm all switches
+    ['lsw1','lsw2','lsw3'].forEach(id => document.getElementById(id).checked = false);
+    updateArming();
+    setTimeout(() => {
+      document.getElementById('lStatus').textContent = 'Relay OFF';
+      document.getElementById('lStatus').className = '';
+    }, 3000);
+  } catch(e) {
+    lLog('err', '[LAUNCH] Off command failed.');
+  }
+}
+
+function lLog(type, msg) {
+  const log = document.getElementById('launchLog');
+  const ts  = new Date().toLocaleTimeString();
+  const div = document.createElement('div');
+  div.className   = 'log-entry ' + type;
+  div.textContent = '[' + ts + '] ' + msg;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
 </script>
 </body>
 </html>
