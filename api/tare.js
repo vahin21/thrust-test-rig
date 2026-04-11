@@ -1,8 +1,10 @@
 import mqtt from "mqtt";
 
-const client = mqtt.connect("mqtt://broker.hivemq.com");
-
 export default function handler(req, res) {
-  client.publish("thrustrig/tare", "TARE");
-  res.status(200).json({ status: "Tare command sent" });
+  const client = mqtt.connect("mqtt://broker.hivemq.com");
+  client.on("connect", () => {
+    client.publish("thrustrig/tare", "TARE");
+    client.end();
+    res.status(200).json({ success: true });
+  });
 }
